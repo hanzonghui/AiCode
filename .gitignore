@@ -1,0 +1,21 @@
+# 临时文件
+logs/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 大文件（如果需要）
+node_modules/
+dist/
+build/
+target/
+
+# 内部快照（可选，但建议保留用于跨会话）
+# .claude/snapshots/

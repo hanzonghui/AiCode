@@ -1,0 +1,112 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(jq *)",
+      "Bash(where jq *)",
+      "Read(//c/Users/Administrator/**)",
+      "Bash(code --list-extensions)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebSearch",
+      "Bash(mcporter call *)",
+      "Bash(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)",
+      "Bash(date -u -v-24H +%Y-%m-%dT%H:%M:%SZ)",
+      "Bash(curl -sH 'User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/124.0.0.0 Safari/537.36 aihot-skill/0.2.0' 'https://aihot.virxact.com/api/public/items?mode=selected&since=__CMDSUB_OUTPUT__&take=50')",
+      "Bash(curl -s \"https://s.jina.ai/MiniMax+199%E5%A5%97%E9%A4%90+2026+%E4%BB%B7%E6%A0%BC+%E5%86%85%E5%AE%B9+API+%E8%AE%A2%E9%98%85\" -H \"Accept: application/json\")",
+      "Bash(bash .claude/skills/left-brain/scripts/session-summary.sh list)",
+      "Bash(npm list *)",
+      "Bash(pip list *)",
+      "Bash(where claude-hub *)",
+      "Bash(npx claude-hub *)",
+      "Write(.claude/commands/**)",
+      "Write(.claude/hooks/**)",
+      "Edit(.claude/settings.local.json)",
+      "Edit(.claude/agents/**)",
+      "Bash(mkdir -p .claude/**)",
+      "Bash(cp scripts/orchestrator/commands/*.md .claude/commands/)",
+      "Bash(node H:/AI-han/AiCode/scripts/orchestrator/dispatcher.js *)",
+      "Bash(node H:/AI-han/AiCode/scripts/orchestrator/test-dispatcher.js)",
+      "Bash(node H:/AI-han/AiCode/scripts/orchestrator/llm-scorer.js *)",
+      "Bash(node H:/AI-han/AiCode/scripts/orchestrator/token-monitor.js *)",
+      "Bash(node H:/AI-han/AiCode/scripts/orchestrator/learn-rules.js *)",
+      "Bash(node H:/AI-han/AiCode/scripts/orchestrator/hooks/*.js *)",
+      "Bash(node scripts/orchestrator/dispatcher.js *)",
+      "Bash(node scripts/orchestrator/test-dispatcher.js)",
+      "Bash(node scripts/orchestrator/llm-scorer.js *)",
+      "Bash(node scripts/orchestrator/token-monitor.js *)",
+      "Bash(node scripts/orchestrator/learn-rules.js *)",
+      "Bash(node scripts/orchestrator/hooks/*.js *)",
+      "Bash(bash .claude/skills/left-brain/scripts/session-init.sh)",
+      "Bash(bash .claude/skills/left-brain/scripts/recall.sh \"KB-20260622-003\")"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/skills/left-brain/scripts/pretool-hook.sh",
+            "timeout": 5,
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "UserPromptSubmit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node H:/AI-han/AiCode/scripts/orchestrator/hooks/dispatch-decision.js",
+            "timeout": 3,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Setup": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/skills/left-brain/scripts/before-hook.sh",
+            "timeout": 10,
+            "once": true
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/skills/left-brain/scripts/posttool-hook.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/skills/left-brain/scripts/auto-perceive.sh",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/skills/left-brain/scripts/auto-save.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash .claude/skills/left-brain/scripts/status-line.sh",
+    "refreshInterval": 60
+  }
+}
