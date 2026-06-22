@@ -72,6 +72,10 @@ function matchKeywords(text, keywords) {
   return null;
 }
 
+/**
+ * 估算任务涉及的 JavaScript 文件数量（基于关键词启发）
+ * @param {string} text 用户任务文本 * @returns {number} 估算的文件数（1-10）
+ */
 function estimateFileCount(text) {
   // 显式提到文件路径
   const filePathPattern = /[\w\-]+\.(java|ts|js|vue|py|go|rs|tsx|jsx)/g;
