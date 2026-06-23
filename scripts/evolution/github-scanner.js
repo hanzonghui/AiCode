@@ -235,7 +235,15 @@ async function enrichTrendingRepos(trendingRepos) {
 
   const enriched = []
 
-  for (const repo of trendingRepos) {
+  // 只 enrich 名称看起来和 Claude Code 生态相关的 repo，避免 832 次 API 调用
+  const relevantPattern = /claude|mcp|agent|memory|automation|extension|hook|tool|anthropic/i
+  const candidatesToEnrich = trendingRepos.filter(repo =>
+    relevantPattern.test(repo.full_name) || relevantPattern.test(repo.description || '')
+  )
+
+  console.log(`  📌 命中相关过滤: ${candidatesToEnrich.length}/${trendingRepos.length} 个需要 enrich`)
+
+  for (const repo of candidatesToEnrich) {
     // 对 Trending 里没搜到详细信息的，调 API 补全
     if (repo.stargazers_count !== undefined) {
       enriched.push(repo)
@@ -270,6 +278,14 @@ async function enrichTrendingRepos(trendingRepos) {
       await new Promise(r => setTimeout(r, 1000))
     } catch {
       // 补全失败就跳过
+    }
+  }
+
+  // 未被 enrich 的 repo 也保留（带基本字段），后续评分会自然过滤掉低相关度的
+  const enrichedNames = new Set(enriched.map(r => r.full_name))
+  for (const repo of trendingRepos) {
+    if (!enrichedNames.has(repo.full_name)) {
+      enriched.push(repo)
     }
   }
 
