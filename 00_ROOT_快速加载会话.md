@@ -26,7 +26,9 @@ node scripts/会话快照/load.js v1.1
 
 | 状态 | 时间 | 中文标签 | 标题 | 启动 |
 |:-----|:-----|:---------|:-----|:-----|
-| ⭐ **最新** | 2026-06-23 12:59 | docs | 文档合并完成 | [▶ 复制](#启动-docs) |
+| ⭐ **最新** | 2026-06-23 13:43 | milestone-test | 测试可配置快照 | [▶ 复制](#启动-milestone-test) |
+|                    | 2026-06-23 13:29 | docs-numbering | 核心文档编号完成 | [▶ 复制](#启动-docs-numbering) |
+|                    | 2026-06-23 12:59 | docs | 文档合并完成 | [▶ 复制](#启动-docs) |
 |                    | 2026-06-23 12:56 | docs,positioning,milestone | 文档完善：客户端 Agent 增强定位作为独立章节写入所有核心文档 | [▶ 复制](#启动-docs-positioning-milestone) |
 |                    | 2026-06-23 12:36 | evolution,docs,context-optimiz | v1.8+ 文档+上下文优化：客户端 Agent 定位说明 + 新会话 token 优化 | [▶ 复制](#启动-evolution-docs-context-optimiz) |
 |                    | 2026-06-23 12:17 | p0-done | v1.8 P0 清理完成 | [▶ 复制](#启动-p0-done) |
@@ -53,7 +55,39 @@ node scripts/会话快照/load.js latest
 ```
 
 ---
-### <a id="启动-docs"></a>📦 docs（最新）
+### <a id="启动-milestone-test"></a>📦 milestone-test（最新）
+
+**时间**：2026-06-23 13:43:25
+**中文标签**：milestone-test
+**快照文件**：`.claude/snapshots/2026-06-23-13-43-25-milestone-test.md`
+
+```
+我们之前的工作已快照在 .claude/snapshots/2026-06-23-13-43-25-milestone-test.md。
+标题: 测试可配置快照
+标签: milestone-test
+
+验证配置生效
+```
+
+---
+
+### <a id="启动-docs-numbering"></a>📦 docs-numbering
+
+**时间**：2026-06-23 13:29:53
+**中文标签**：docs-numbering
+**快照文件**：`.claude/snapshots/2026-06-23-13-29-53-docs-numbering.md`
+
+```
+我们之前的工作已快照在 .claude/snapshots/2026-06-23-13-29-53-docs-numbering.md。
+标题: 核心文档编号完成
+标签: docs-numbering
+
+5个核心文档按业务流程编号 00-04，所有引用和脚本路径已同步更新
+```
+
+---
+
+### <a id="启动-docs"></a>📦 docs
 
 **时间**：2026-06-23 12:59:45
 **中文标签**：docs
@@ -243,11 +277,24 @@ M1-M5 全部完成，test-scanner 17/17，test-analyzer 24/24，npm test 全过
 
 ## ❓ FAQ
 
+**Q: 快照保存太频繁？**
+```bash
+# 编辑配置，调整 mode / minIntervalMinutes / excludeTags
+.claude/snapshot-config.json
+```
+- `mode: off` — 完全禁止自动保存（可 `--force` 强制）
+- `mode: manual` — 只有显式调用 save.js 才保存
+- `mode: milestone` — 只有完成/里程碑标签才自动保存（默认）
+- `mode: auto` — 保持原有自动行为
+- `minIntervalMinutes` — 两次快照最小间隔
+- `excludeTags` — 包含这些关键字的标签会被跳过
+
 **Q: 快照文件太多？**
 ```bash
 ls .claude/snapshots/          # 查看
 rm .claude/snapshots/*旧标签*   # 按标签删
 ```
+快照目录已加入 `.gitignore`，不会进入 git 历史。
 
 **Q: 加载后 AI 还是不理解？**
 ```bash

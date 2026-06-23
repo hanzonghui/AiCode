@@ -1,14 +1,20 @@
 #!/usr/bin/env node
 /**
- * 快照保存脚本
- * 用法: node save.js "<标题>" "<标签>"
- * 示例: node save.js "智能调度 v1.1 完成" "milestone-v1.1"
+ * 快照保存脚本（v2.0 - 可配置频率）
+ * 用法: node save.js "<标题>" "<标签>" [-m "<继续任务>"] [--force]
+ * 示例: node save.js "智能调度 v1.1 完成" "milestone-v1.1" -m "继续测试 P1"
+ *
+ * 配置: .claude/snapshot-config.json
+ *   - mode: off | manual | milestone | auto
+ *   - minIntervalMinutes: 两次快照最小间隔
+ *   - excludeTags: 跳过的标签关键字
+ *   - manualOverride: true 时显式调用可绕过模式限制
  *
  * 保存内容:
  * 1. 对话历史（从左脑 session-summary 拿）
  * 2. 关键文件状态（git status 或文件 mtime）
  * 3. 知识库快照（前 20 条 KB）
- * 4. ROOT_QUICK_LOAD.md 索引条目
+ * 4. 00_ROOT_快速加载会话.md 索引条目
  */
 
 const fs = require('fs');
@@ -19,40 +25,116 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const SNAPSHOT_DIR = path.join(ROOT, '.claude', 'snapshots');
 const QUICK_LOAD_FILE = path.join(ROOT, '00_ROOT_快速加载会话.md');
 const LEFT_BRAIN_DIR = path.join(ROOT, '.claude', 'skills', 'left-brain', 'memory');
+const CONFIG_FILE = path.join(ROOT, '.claude', 'snapshot-config.json');
+
+// 默认配置
+const DEFAULT_CONFIG = {
+  mode: 'milestone',
+  minIntervalMinutes: 30,
+  autoCleanup: { enabled: true, keepCount: 30, keepDays: 14 },
+  excludeTags: ['plan', 'test', 'temp', 'debug', 'wip'],
+  manualOverride: true,
+};
+
+function loadConfig() {
+  if (!fs.existsSync(CONFIG_FILE)) return DEFAULT_CONFIG;
+  try {
+    const raw = fs.readFileSync(CONFIG_FILE, 'utf8');
+    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+  } catch (e) {
+    console.error('⚠️ 快照配置解析失败，使用默认配置:', e.message);
+    return DEFAULT_CONFIG;
+  }
+}
+
+const config = loadConfig();
+
+// 解析参数
+const args = process.argv.slice(2);
+let title = args[0] || '未命名快照';
+let tag = args[1] || 'manual';
+let nextTaskMsg = null;
+let force = false;
+for (let i = 2; i < args.length; i++) {
+  if (args[i] === '-m' && i + 1 < args.length) {
+    nextTaskMsg = args[i + 1];
+    i++;
+  } else if (args[i] === '--force') {
+    force = true;
+  }
+}
+
+// 标签清洗：去掉特殊字符，只保留中文/英文/数字/横线/下划线/逗号
+tag = tag.replace(/[\\/:*?"<>+]/g, '-').substring(0, 50);
+
+const isExplicitCall = !process.env.SNAPSHOT_AUTO;
+
+// 模式检查
+if (config.mode === 'off' && !force) {
+  console.log('⏸️ 快照模式为 off，跳过保存（加 --force 可强制保存）');
+  process.exit(0);
+}
+
+if (config.mode === 'manual' && !isExplicitCall && !force) {
+  console.log('⏸️ 快照模式为 manual，自动调用跳过保存（显式调用 save.js 或加 --force 可保存）');
+  process.exit(0);
+}
+
+if (config.mode === 'milestone' && !isExplicitCall && !force) {
+  const milestoneKeywords = ['完成', '里程碑', '交付', 'done', 'milestone', 'verified', 'completed'];
+  const isMilestone = milestoneKeywords.some(k => tag.toLowerCase().includes(k));
+  if (!isMilestone) {
+    console.log('⏸️ 快照模式为 milestone，非完成/里程碑标签跳过保存');
+    process.exit(0);
+  }
+}
+
+// 排除标签检查
+if (config.excludeTags && config.excludeTags.length > 0) {
+  const lowerTag = tag.toLowerCase();
+  const excluded = config.excludeTags.find(et => lowerTag.includes(et.toLowerCase()));
+  if (excluded && !force) {
+    console.log(`⏸️ 标签命中排除规则 "${excluded}"，跳过保存（加 --force 可强制保存）`);
+    process.exit(0);
+  }
+}
+
+// 最小间隔检查
+if (config.minIntervalMinutes > 0 && !force) {
+  const files = fs.existsSync(SNAPSHOT_DIR)
+    ? fs.readdirSync(SNAPSHOT_DIR)
+        .filter(f => f.endsWith('.md') && !f.startsWith('plan-'))
+        .map(f => ({ file: f, mtime: fs.statSync(path.join(SNAPSHOT_DIR, f)).mtime.getTime() }))
+        .sort((a, b) => b.mtime - a.mtime)
+    : [];
+  if (files.length > 0) {
+    const lastMtime = files[0].mtime;
+    const minutesSince = (Date.now() - lastMtime) / 60000;
+    if (minutesSince < config.minIntervalMinutes) {
+      console.log(`⏸️ 距上次快照仅 ${Math.round(minutesSince)} 分钟（最小间隔 ${config.minIntervalMinutes} 分钟），跳过保存`);
+      console.log(`   上次: ${files[0].file}`);
+      process.exit(0);
+    }
+  }
+}
 
 // 确保目录
 if (!fs.existsSync(SNAPSHOT_DIR)) {
   fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
 }
 
-const title = process.argv[2] || '未命名快照';
-// 标签清洗：去掉特殊字符，只保留中文/英文/数字/横线/下划线
-let tag = process.argv[3] || 'manual';
-tag = tag.replace(/[\\/:*?"<>+]/g, '-').substring(0, 30);
-
-// v1.2 新增：支持 -m "消息" 参数（自定义"继续任务"内容）
-let nextTaskMsg = null;
-for (let i = 4; i < process.argv.length; i++) {
-  if (process.argv[i] === '-m' && i + 1 < process.argv.length) {
-    nextTaskMsg = process.argv[i + 1];
-    break;
-  }
-}
-
 const now = new Date();
-// 用本地时间生成文件名（sv-SE 格式 = YYYY-MM-DD HH:mm:ss）
 const localISO = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
   .toISOString()
   .substring(0, 19)
-  .replace('T', ' ');  // 2026-06-22 08:17:59
-const timestamp = localISO.replace(/[: ]/g, '-');  // 文件名用：2026-06-22-08-17-59
+  .replace('T', ' ');
+const timestamp = localISO.replace(/[: ]/g, '-');
 const dateStr = localISO.substring(0, 10);
 const timeStr = localISO.substring(11, 16);
 
 const filename = `${timestamp}-${tag}.md`;
 const filepath = path.join(SNAPSHOT_DIR, filename);
 
-// 收集数据
 const data = {
   timestamp: localISO,
   title,
@@ -90,13 +172,12 @@ try {
   data.recentKBError = e.message;
 }
 
-// 3. 关键文件状态
+// 3. 关键文件状态（动态从存在的文件读取）
 const keyFiles = [
   'CLAUDE.md',
   '.claude/settings.local.json',
-  'scripts/orchestrator/dispatcher.js',
-  'scripts/orchestrator/docs/DAILY-SUMMARY-20260622.md',
-  'ROOT_QUICK_LOAD.md',
+  'PROJECT-CONTEXT.md',
+  '00_ROOT_快速加载会话.md',
 ];
 
 data.keyFiles = keyFiles.map(f => {
@@ -108,7 +189,7 @@ data.keyFiles = keyFiles.map(f => {
   return { path: f, exists: false };
 });
 
-// 生成快照内容
+// 4. 生成快照内容并保存
 const content = generateSnapshot(data);
 fs.writeFileSync(filepath, content, 'utf8');
 
@@ -116,8 +197,13 @@ console.log(`✅ 快照已保存: ${filename}`);
 console.log(`   位置: ${filepath}`);
 console.log(`   大小: ${(content.length / 1024).toFixed(1)} KB`);
 
-// 更新 ROOT_QUICK_LOAD.md
+// 5. 更新索引
 updateQuickLoad(data);
+
+// 6. 自动清理旧快照
+if (config.autoCleanup && config.autoCleanup.enabled) {
+  cleanupOldSnapshots(config.autoCleanup);
+}
 
 function generateSnapshot(d) {
   return `# 快照: ${d.title}
@@ -172,23 +258,18 @@ ${d.keyFiles.map(f =>
 
 ---
 
-_本快照由 scripts/snapshot/save.js 自动生成_
+_本快照由 scripts/会话快照/save.js 自动生成_
 `;
 }
 
 function updateQuickLoad(d) {
-  // 读现有内容
   if (!fs.existsSync(QUICK_LOAD_FILE)) {
     console.error('❌ 00_ROOT_快速加载会话.md 不存在');
     return;
   }
   let content = fs.readFileSync(QUICK_LOAD_FILE, 'utf8');
 
-  // 生成表格锚点 ID（中文/特殊字符 → -）
   const anchorId = '启动-' + d.tag.replace(/[^\w一-龥]/g, '-');
-
-  // ========== 1. 更新"快照列表"表格（加新行到开头）==========
-  // 表格头固定为 "| 状态 | 时间 | 中文标签 | 标题 | 启动 |"
   const tableHeader = '| 状态 | 时间 | 中文标签 | 标题 | 启动 |';
   const headerIdx = content.indexOf(tableHeader);
   if (headerIdx === -1) {
@@ -196,11 +277,9 @@ function updateQuickLoad(d) {
     return;
   }
 
-  // 找表格后的换行
   const afterHeader = content.substring(headerIdx);
   const lines = afterHeader.split('\n');
 
-  // 找分隔行（|:-----|...|）位置
   let sepLineIdx = -1;
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].startsWith('|:--') || lines[i].startsWith('| :--') || lines[i].match(/^\|[-:\s|]+\|$/)) {
@@ -213,24 +292,18 @@ function updateQuickLoad(d) {
     return;
   }
 
-  // 把所有"⭐ 最新"行改成普通（去标记，但保留列宽视觉对齐）
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].includes('⭐ **最新**')) {
-      // 用 18 个空格对齐（原列宽）
       lines[i] = lines[i].replace('⭐ **最新**', '                  ');
     }
   }
 
-  // 新行（带 ⭐ 最新）插入到分隔行后
   const newRow = `| ⭐ **最新** | ${d.timestamp.substring(0, 16).replace('T', ' ')} | ${d.tag} | ${d.title} | [▶ 复制](#${anchorId}) |`;
   lines.splice(sepLineIdx + 1, 0, newRow);
 
-  // 重组
   const newAfterHeader = lines.join('\n');
   content = content.substring(0, headerIdx) + newAfterHeader;
 
-  // ========== 2. 把"快速启动命令"段插入到"## 🚀 快速启动命令"段开头 ==========
-  // 用正则找二级标题（## 开头），不是文本里的"🚀"
   const sectionMarker = /^## 🚀 快速启动命令/m;
   const match = content.match(sectionMarker);
   if (!match) {
@@ -239,7 +312,6 @@ function updateQuickLoad(d) {
   }
   const sectionIdx = match.index;
 
-  // 找该段的 --- 分隔线（启动段开始位置）
   const afterSection = content.substring(sectionIdx);
   const dashMatch = afterSection.match(/\n---\n/);
   if (!dashMatch) {
@@ -248,10 +320,8 @@ function updateQuickLoad(d) {
   }
   const insertPos = sectionIdx + dashMatch.index + dashMatch[0].length;
 
-  // 启动段：自定义消息 or 默认占位符
-  const nextTaskLine = nextTaskMsg ? nextTaskMsg : '<填入你想继续做的事>';
+  const nextTaskLine = nextTaskMsg || '<填入你想继续做的事>';
 
-  // v1.3 三级检查点：检测是否需要归档提示
   let levelHint = '';
   const isCompletionTag = d.tag && (
     d.tag.includes('完成') ||
@@ -260,11 +330,9 @@ function updateQuickLoad(d) {
   );
   const hasArchive = fs.existsSync(path.join(ROOT, 'archives'));
   if (isCompletionTag && hasArchive) {
-    // 任务完成时提醒归档
     levelHint = `\n\n> 💡 **三级检查点提示**：本任务完成（标签含"完成/里程碑/交付"）。可跑 \`bash scripts/parallel/global-archive.sh "${d.title}"\` 全局归档`;
   }
 
-  // 新启动段（无 "（最新）" 标记，避免累积）
   const newSegment = `### <a id="${anchorId}"></a>📦 ${d.tag}（最新）
 
 **时间**：${d.timestamp.substring(0, 19)}
@@ -283,11 +351,35 @@ ${nextTaskLine}${levelHint}
 
 `;
 
-  // 移除其他启动段的"（最新）"标记（只保留最新的）
   content = content.replace(/（最新）\n/g, '\n').replace(/（最新） /g, ' ');
-
   content = content.substring(0, insertPos) + newSegment + content.substring(insertPos);
 
   fs.writeFileSync(QUICK_LOAD_FILE, content, 'utf8');
   console.log(`✅ 索引已更新: 00_ROOT_快速加载会话.md`);
+}
+
+function cleanupOldSnapshots(opts) {
+  if (!fs.existsSync(SNAPSHOT_DIR)) return;
+  const files = fs.readdirSync(SNAPSHOT_DIR)
+    .filter(f => f.endsWith('.md'))
+    .map(f => ({ file: f, path: path.join(SNAPSHOT_DIR, f), mtime: fs.statSync(path.join(SNAPSHOT_DIR, f)).mtime.getTime() }))
+    .sort((a, b) => b.mtime - a.mtime);
+
+  if (files.length === 0) return;
+
+  let removed = 0;
+  const nowMs = Date.now();
+  const keepDaysMs = (opts.keepDays || 14) * 24 * 60 * 60 * 1000;
+  const keepCount = opts.keepCount || 30;
+
+  files.forEach((f, idx) => {
+    if (idx >= keepCount || (nowMs - f.mtime) > keepDaysMs) {
+      fs.unlinkSync(f.path);
+      removed++;
+    }
+  });
+
+  if (removed > 0) {
+    console.log(`🧹 自动清理: 移除 ${removed} 个过期快照，保留 ${files.length - removed} 个`);
+  }
 }

@@ -103,7 +103,7 @@ console.log('\n【2/4】save.js ROOT 索引损坏兜底测试');
     let saveThrew = false;
     try {
       saveOutput = execSync(
-        `node "${saveScript}" "失败路径测试-损坏ROOT" "test-failure"`,
+        `node "${saveScript}" "失败路径测试-损坏ROOT" "test-failure" --force`,
         { stdio: 'pipe', encoding: 'utf8' }
       );
     } catch (e) {

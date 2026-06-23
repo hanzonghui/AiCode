@@ -1,0 +1,18 @@
+{
+  "_comment": "快照系统配置。mode 控制自动保存行为；manual 模式下只有显式调用 save.js 才保存；milestone 模式只在完成/里程碑标签时保存；auto 模式保持原有行为。",
+  "mode": "milestone",
+  "minIntervalMinutes": 30,
+  "autoCleanup": {
+    "enabled": true,
+    "keepCount": 30,
+    "keepDays": 14
+  },
+  "excludeTags": [
+    "plan",
+    "test",
+    "temp",
+    "debug",
+    "wip"
+  ],
+  "manualOverride": true
+}

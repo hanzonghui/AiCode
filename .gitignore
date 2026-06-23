@@ -23,5 +23,6 @@ dist/
 build/
 target/
 
-# 内部快照（可选，但建议保留用于跨会话）
-# .claude/snapshots/
+# 内部快照（本地会话状态，不进入 git，避免仓库膨胀）
+.claude/snapshots/
+.claude/skills/left-brain/memory/sessions/snapshots/

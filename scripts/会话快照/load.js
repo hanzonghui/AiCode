@@ -13,7 +13,7 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const SNAPSHOT_DIR = path.join(ROOT, '.claude', 'snapshots');
-const QUICK_LOAD_FILE = path.join(ROOT, 'ROOT_QUICK_LOAD.md');
+const QUICK_LOAD_FILE = path.join(ROOT, '00_ROOT_快速加载会话.md');
 
 const query = process.argv[2] || 'latest';
 

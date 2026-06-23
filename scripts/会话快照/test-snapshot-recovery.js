@@ -71,9 +71,9 @@ function restore(file) {
     const testKbFile = path.join(KB_DIR, `KB-TEST-${Date.now()}.md`);
     fs.writeFileSync(testKbFile, `[KB-TEST-${Date.now()}] 测试 KB: 快照应包含最近知识`, 'utf8');
 
-    // 3. 运行 save.js 创建快照
+    // 3. 运行 save.js 创建快照（加 --force 绕过 excludeTags 中的 test 关键字）
     const saveOutput = execSync(
-      `node "${path.join(SCRIPT_DIR, 'save.js')}" "${testTitle}" "${testTag}" -m "${testNext}"`,
+      `node "${path.join(SCRIPT_DIR, 'save.js')}" "${testTitle}" "${testTag}" -m "${testNext}" --force`,
       { cwd: ROOT, encoding: 'utf8' }
     );
     const match = saveOutput.match(/快照已保存:\s*(.+)/);
