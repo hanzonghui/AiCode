@@ -1,3 +1,0 @@
-# 左脑客户端依赖 v3.12
-# 用户安装后运行: pip install -r requirements_client.txt
-cryptography>=42.0.0

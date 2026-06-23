@@ -1,8 +1,0 @@
-version=3.12
-mode=universal
-product_type=trial
-product_id=1
-sign_prefix=77d30395ff5ef1e85830cf5262e1505b
-feature_switches={"perceive": true, "knowledge": true, "graph": true}
-packaged_at=2026-06-21T01:15:21.357083
-auth_mode=online_universal
