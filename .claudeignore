@@ -5,6 +5,10 @@
 # 自动化脚本（按需）
 .automation/
 
+# 第三方工具/AI 配置（大且非核心）
+.qoder/
+.skill/
+
 # 大文件/临时文件
 logs/
 *.log
@@ -26,8 +30,17 @@ Thumbs.db
 # 内部归档（手动读）
 archives/
 
+# 快照存档（量大，按需手动读）
+.claude/snapshots/
+.claude/skills/left-brain/memory/sessions/
+.claude/skills/left-brain/memory/logs/
+
 # 依赖/构建输出
 node_modules/
 dist/
 build/
 target/
+
+# 进化系统原始数据（量大，按需读）
+data/github/trending.json
+data/github/candidates.json

@@ -1,9 +1,0 @@
-schema_version: 1
-module_path: langchain4j_examples
-title: LangChain4j 全场景示例工程
-scope:
-    - 【2】langchain4j-atguiguV5/
-source_files: []
-depends_on: []
-related_to:
-    - path: spring_ai_alibaba_examples

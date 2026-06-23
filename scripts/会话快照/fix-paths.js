@@ -15,7 +15,7 @@ const REPLACEMENTS = [
   { old: 'scripts/snapshot/', new: 'scripts/会话快照/' },
   { old: 'scripts/orchestrator/docs/', new: 'scripts/orchestrator/文档/' },
   { old: 'scripts/orchestrator/DECISION-GUIDE', new: 'scripts/orchestrator/决策指南' },
-  { old: 'ROOT_QUICK_LOAD.md', new: 'ROOT_快速加载会话.md' },
+  { old: 'ROOT_QUICK_LOAD.md', new: '00_ROOT_快速加载会话.md' },
 
   // 文档改名
   { old: 'RESTART-GUIDE.md', new: '重启指南.md' },
@@ -28,7 +28,7 @@ const REPLACEMENTS = [
 
 // 要更新的文件（用户直接看的）
 const TARGETS = [
-  'ROOT_快速加载会话.md',
+  '00_ROOT_快速加载会话.md',
   'AI-ClaudeCode-最佳实践精简.md',
   'scripts/orchestrator/文档/重启指南.md',
   'scripts/orchestrator/文档/使用文档.md',

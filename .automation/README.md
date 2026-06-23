@@ -59,7 +59,7 @@ bash .automation/new-project.sh my-api -t springboot -r requirements.md -d
 | `.qoderrules` | Qoder | 自动 |
 | `.minimaxrc` | MiniMax Code | 自动 |
 
-所有文件引用根目录 `AI-ClaudeCode-最佳实践精简.md`，改一处全生效。
+所有文件引用根目录 `01_AI-ClaudeCode-最佳实践精简.md`，改一处全生效。
 
 ## 目录结构
 

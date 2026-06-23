@@ -8,7 +8,7 @@
  *   2. load.js 能提取正确的恢复指令
  *   3. 恢复指令中包含继续任务
  *
- * 注意：测试会临时修改 latest_summary.md 和 ROOT_快速加载会话.md，
+ * 注意：测试会临时修改 latest_summary.md 和 00_ROOT_快速加载会话.md，
  *       测试结束后自动恢复。
  *
  * @since v1.7.1 (2026-06-22)
@@ -21,7 +21,7 @@ const { execSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..', '..');
 const SCRIPT_DIR = __dirname;
 const SNAPSHOT_DIR = path.join(ROOT, '.claude', 'snapshots');
-const QUICK_LOAD_FILE = path.join(ROOT, 'ROOT_快速加载会话.md');
+const QUICK_LOAD_FILE = path.join(ROOT, '00_ROOT_快速加载会话.md');
 const SUMMARY_FILE = path.join(ROOT, '.claude', 'skills', 'left-brain', 'memory', 'sessions', 'latest_summary.md');
 const KB_DIR = path.join(ROOT, '.claude', 'skills', 'left-brain', 'memory', 'knowledge');
 

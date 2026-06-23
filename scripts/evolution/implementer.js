@@ -286,7 +286,7 @@ function generateImplementationPrompt(candidate, featureDir) {
 
 先读取这些文件了解项目结构：
 - CLAUDE.md（启动导航）
-- AI-ClaudeCode-最佳实践精简.md（行为规范）
+- 01_AI-ClaudeCode-最佳实践精简.md（行为规范）
 - scripts/evolution/github-scanner.js（现有实现）
 - scripts/evolution/feature-analyzer.js（评估逻辑）
 

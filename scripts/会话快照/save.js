@@ -17,7 +17,7 @@ const { execSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const SNAPSHOT_DIR = path.join(ROOT, '.claude', 'snapshots');
-const QUICK_LOAD_FILE = path.join(ROOT, 'ROOT_快速加载会话.md');
+const QUICK_LOAD_FILE = path.join(ROOT, '00_ROOT_快速加载会话.md');
 const LEFT_BRAIN_DIR = path.join(ROOT, '.claude', 'skills', 'left-brain', 'memory');
 
 // 确保目录
@@ -179,7 +179,7 @@ _本快照由 scripts/snapshot/save.js 自动生成_
 function updateQuickLoad(d) {
   // 读现有内容
   if (!fs.existsSync(QUICK_LOAD_FILE)) {
-    console.error('❌ ROOT_快速加载会话.md 不存在');
+    console.error('❌ 00_ROOT_快速加载会话.md 不存在');
     return;
   }
   let content = fs.readFileSync(QUICK_LOAD_FILE, 'utf8');
@@ -289,5 +289,5 @@ ${nextTaskLine}${levelHint}
   content = content.substring(0, insertPos) + newSegment + content.substring(insertPos);
 
   fs.writeFileSync(QUICK_LOAD_FILE, content, 'utf8');
-  console.log(`✅ 索引已更新: ROOT_快速加载会话.md`);
+  console.log(`✅ 索引已更新: 00_ROOT_快速加载会话.md`);
 }

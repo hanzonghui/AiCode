@@ -15,7 +15,7 @@
 - [ ] `npm run benchmark` 能跑出结果
 - [ ] `bash .workspace/setup.sh` 无报错
 - [ ] `.claude/mcp.json` 路径匹配新机器
-- [ ] `ROOT_快速加载会话.md` 是最新快照索引
+- [ ] `00_ROOT_快速加载会话.md` 是最新快照索引
 
 ## 拷贝到新机器后
 

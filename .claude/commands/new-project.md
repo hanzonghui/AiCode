@@ -33,7 +33,7 @@ bash "${WORKSPACE_ROOT}/.automation/new-project.sh" <项目名> \
 1. 读取需求文档（REQUIREMENTS.md 或用户对话中提供的需求）
 2. 用 Agent 工具派发开发 agent：
    - 工作目录：`${WORKSPACE_ROOT}/AI-【3】-项目开发/<项目名>/`
-   - Prompt：读取 AI-ClaudeCode-最佳实践精简.md 约定 + 需求文档 + 执行开发
+   - Prompt：读取 01_AI-ClaudeCode-最佳实践精简.md 约定 + 需求文档 + 执行开发
 3. 开发完成后运行构建验证
 4. 向用户汇报结果
 

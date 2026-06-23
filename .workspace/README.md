@@ -56,9 +56,9 @@ AiCode/
 ├── .automation/             ← 项目自动化脚本
 ├── .ai-memory/              ← 跨 IDE 共享记忆
 ├── .claude/                 ← Claude Code 配置 + MCP
-├── AI-ClaudeCode-最佳实践精简.md        ← AI 行为约定
+├── 01_AI-ClaudeCode-最佳实践精简.md        ← AI 行为约定
 ├── CLAUDE.md                ← Claude Code 指令
-├── 工作空间功能介绍.md       ← v1.7+ 功能介绍
+├── 02_工作空间功能介绍.md       ← v1.7+ 功能介绍
 ├── AI-【3】-项目开发/        ← 个人项目
 ├── AI-【4】-公司项目/        ← 公司项目（git clone）
 ├── archives/                ← 全局归档
@@ -71,7 +71,7 @@ AiCode/
 
 - **个人项目**放 `AI-【3】-项目开发/`
 - **公司项目**放 `AI-【4】-公司项目/`，每个项目独立 git 管理
-- **AI 约定**统一在 `AI-ClaudeCode-最佳实践精简.md`，改一处全生效
+- **AI 约定**统一在 `01_AI-ClaudeCode-最佳实践精简.md`，改一处全生效
 - **MCP 路径**在新机器上需更新 `.claude/mcp.json` 中的绝对路径
 - **搬家后**只需运行 `setup.sh`，所有路径自动适配
 

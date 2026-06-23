@@ -90,11 +90,11 @@ console.log('【1/4】dispatcher RULES 损坏暴露测试');
 console.log('\n【2/4】save.js ROOT 索引损坏兜底测试');
 {
   const saveScript = path.join(ROOT, 'scripts', '会话快照', 'save.js');
-  const quickLoadPath = path.join(ROOT, 'ROOT_快速加载会话.md');
+  const quickLoadPath = path.join(ROOT, '00_ROOT_快速加载会话.md');
   const originalQuickLoad = backup(quickLoadPath);
 
   try {
-    // 2.1 把 ROOT_快速加载会话.md 设为只读（破坏写入）
+    // 2.1 把 00_ROOT_快速加载会话.md 设为只读（破坏写入）
     // 用更直接的方式：故意写入一个无效内容，模拟损坏
     fs.writeFileSync(quickLoadPath, '');
 

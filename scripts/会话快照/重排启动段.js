@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 重排 ROOT_快速加载会话.md
+ * 重排 00_ROOT_快速加载会话.md
  * 1. 把所有启动段（### <a id="启动-xxx">）收集起来
  * 2. 按时间倒序重新插入到 "## 🚀 快速启动命令" 段
  * 3. 删除错位的启动段（文件末尾、夹在中间）
@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const FILE = path.join(ROOT, 'ROOT_快速加载会话.md');
+const FILE = path.join(ROOT, '00_ROOT_快速加载会话.md');
 
 let content = fs.readFileSync(FILE, 'utf8');
 
