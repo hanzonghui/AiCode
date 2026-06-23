@@ -96,5 +96,5 @@ node scripts/会话快照/save.js "标题" "标签"
 - 自我约束：`scripts/orchestrator/自我约束规范.md`
 - 工作空间说明：`工作空间功能介绍.md`
 - 进化系统设计：`自我进化循环系统设计.md`
-- 下一步计划：`下一步优化计划.md`
+- 版本迭代：`版本迭代计划.md`
 - 左脑系统：`.claude/skills/left-brain/memory/MEMORY.md`
