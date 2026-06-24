@@ -105,6 +105,17 @@
 - 04 路线图增量 E / M6
 - 下一个增量：M7 auto-implement（2-3 天，进化系统闭环）
 
+### 🩹 Fixed - Windows PowerShell 兼容（v2.1.0 补丁）
+
+**问题**：在 Windows PowerShell 调 `bash left-brain.sh recall --semantic ...` 报 `WSL execvpe /bin/bash failed: No such file or directory`（PowerShell 不带 Git Bash/WSL）。
+
+**解决**：在 `package.json` 加 3 个跨平台 npm script，**不依赖 bash**：
+- `npm run recall:semantic -- "查询" --top 3`
+- `npm run recall:semantic:stats`
+- `npm run recall:semantic:rebuild`
+
+**改文件**：`package.json`（+3 行）
+
 ---
 
 ## [v1.9.1] - 2026-06-24
