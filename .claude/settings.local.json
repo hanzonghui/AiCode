@@ -66,6 +66,11 @@
             "type": "command",
             "command": "bash H:/AI-han/AiCode/scripts/evolution/evolution-hook.sh",
             "timeout": 8
+          },
+          {
+            "type": "command",
+            "command": "bash H:/AI-han/AiCode/.claude/skills/left-brain/scripts/session-init.sh",
+            "timeout": 10
           }
         ]
       }
