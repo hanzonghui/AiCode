@@ -386,7 +386,13 @@ case "$1" in
         ;;
     recall|search)
         shift
-        recall "$@"
+        # --semantic 走 Node TF-IDF 引擎，其余走原 grep
+        if [ "$1" = "--semantic" ]; then
+            shift
+            node "${SCRIPT_DIR}/../../../../scripts/orchestrator/recall/semantic-recall.js" search "$@"
+        else
+            recall "$@"
+        fi
         ;;
     preference|correct)
         shift

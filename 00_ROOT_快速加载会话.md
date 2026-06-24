@@ -38,7 +38,8 @@ node scripts/会话快照/load.js v1.1
 
 | 状态 | 时间 | 中文标签 | 标题 | 启动 |
 |:-----|:-----|:---------|:-----|:-----|
-| ⭐ **最新** | 2026-06-24 17:30 | v1.9-final,v2.0.0-autonomous,daily-summary,resume- | v1.9.1/2/3 + v2.0.0 P0-1 完成 + 最高指令落地 + 文档全同步，明日继续 | [▶ 复制](#启动-v1-9-final-v2-0-0-autonomous-daily-summary-resume-) |
+| ⭐ **最新** | 2026-06-24 22:52 | milestone-M6 | M6 向量检索 E1 TF-IDF 完成（自主模式） | [▶ 复制](#启动-milestone-M6) |
+|                    | 2026-06-24 17:30 | v1.9-final,v2.0.0-autonomous,daily-summary,resume- | v1.9.1/2/3 + v2.0.0 P0-1 完成 + 最高指令落地 + 文档全同步，明日继续 | [▶ 复制](#启动-v1-9-final-v2-0-0-autonomous-daily-summary-resume-) |
 |                    | 2026-06-24 17:05 | v1.9.3,highest-directive,v2-rewrite,done | v1.9.3 完成 + 智能演进最高指令 + v2.0 路线重写 | [▶ 复制](#启动-v1-9-3-highest-directive-v2-rewrite-done) |
 |                    | 2026-06-24 17:00 | v1.9.3,done,priority-directive,highest | v1.9.3 完成 + 明确 智能演进 = 最高指令 | [▶ 复制](#启动-v1-9-3-done-priority-directive-highest) |
 |                    | 2026-06-24 16:34 | v1.9.3,increment-B-plan-A,planner-bridge,milestone | v1.9.3 增量 B 方案 A planner 完整升级完成 | [▶ 复制](#启动-v1-9-3-increment-B-plan-A-planner-bridge-milestone) |
@@ -105,7 +106,23 @@ node scripts/会话快照/load.js latest
 ```
 
 ---
-### <a id="启动-v1-9-final-v2-0-0-autonomous-daily-summary-resume-"></a>📦 v1.9-final,v2.0.0-autonomous,daily-summary,resume-（最新）
+### <a id="启动-milestone-M6"></a>📦 milestone-M6（最新）
+
+**时间**：2026-06-24 22:52:42
+**中文标签**：milestone-M6
+**快照文件**：`.claude/snapshots/2026-06-24-22-52-42-milestone-M6.md`
+
+```
+我们之前的工作已快照在 .claude/snapshots/2026-06-24-22-52-42-milestone-M6.md。
+标题: M6 向量检索 E1 TF-IDF 完成（自主模式）
+标签: milestone-M6
+
+下一步：M7 auto-implement 闭环，或继续优化 recall（嵌入模型 E2）
+```
+
+---
+
+### <a id="启动-v1-9-final-v2-0-0-autonomous-daily-summary-resume-"></a>📦 v1.9-final,v2.0.0-autonomous,daily-summary,resume-
 
 **时间**：2026-06-24 17:30:18
 **中文标签**：v1.9-final,v2.0.0-autonomous,daily-summary,resume-

@@ -42,6 +42,9 @@ target/
 .claude/skills/left-brain/memory/anomalies.json
 .claude/skills/left-brain/memory/.last-scan.json
 
+# 语义检索 TF-IDF 索引缓存（每次 KB 变化重建，不入库）
+.claude/skills/left-brain/memory/embeddings/
+
 # 自动化修复 proposals（auto-fix 写入，等用户 /ok）
 .claude/skills/left-brain/memory/fix-proposals.json
 

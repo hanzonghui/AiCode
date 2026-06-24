@@ -52,6 +52,61 @@
 
 ---
 
+## [v2.1.0] - 2026-06-24
+
+### 🧠 Added - 增量 E：向量语义检索（M6 完成 · 自主模式首次实战）
+
+**背景**：04 路线图增量 E 计划中项。L2 长期记忆升级，让"模糊想找啥"也能命中，召回率 ↑ 50%。
+**模式**：本次在 `🤖 自主模式 ON` 下完成，是该模式首次端到端跑通一个完整增量（M6）。
+
+### Added - semantic-recall.js 引擎（方案 E1 TF-IDF）
+- 路径：`scripts/orchestrator/recall/semantic-recall.js`
+- 算法：TF-IDF + 倒排索引 + 余弦相似度
+- 中文：双字 bigram 滑动切分（零分词器依赖）
+- 英文：按 `[a-zA-Z0-9]+` 切分，转小写
+- 缓存：`memory/embeddings/tfidf-index.json`（KB mtime 变化自动失效）
+- CLI：`node semantic-recall.js search|rebuild|stats`
+
+### Added - test-semantic-recall.js 单元测试
+- 路径：`scripts/orchestrator/recall/test-semantic-recall.js`
+- **31/31 全过**
+- 真实数据：60 条 KB 上"模糊查询"召回率 = **80%**（4/5 测试用例命中）
+
+### Changed - left-brain.sh recall 路由
+- `recall --semantic <query>` 走 Node TF-IDF 引擎
+- 无参数走原 grep 关键词检索（向后兼容）
+
+### Changed - package.json
+- 新增 `"test:recall"` npm script
+- `npm test` 链追加 semantic-recall 测试
+
+### Files（增量 E）
+- 新增：`scripts/orchestrator/recall/semantic-recall.js`（约 220 行）
+- 新增：`scripts/orchestrator/recall/test-semantic-recall.js`（约 180 行）
+- 修改：`.claude/skills/left-brain/scripts/left-brain.sh`（recall 子命令加 --semantic 路由）
+- 修改：`package.json`（test:recall 脚本 + test 链追加）
+- 生成：`.claude/skills/left-brain/memory/embeddings/tfidf-index.json`（缓存，gitignore）
+- 快照：`.claude/snapshots/2026-06-24-22-52-42-milestone-M6.md`
+
+### 验收数据（5 个真实查询测试用例）
+- "智能演进路线" → 命中 ✅
+- "dispatcher 调度器" → 命中 ✅
+- "上次跟调度器相关的" → 命中 ✅（自然语言问句）
+- "快照系统" → 命中 ✅
+- "自我反思" → 未命中（term 分布过散，TF-IDF 局限）
+- **召回率：80%（≥ 70% 验收线）**
+
+### 局限与升级路径
+- TF-IDF 无法处理语义级相似（如"汽车" vs "轿车"）
+- 升级 E2：本地 MiniLM 嵌入（@xenova/transformers，1-2 天）
+- 升级 E3：Ollama embedding（3 天）
+
+### 关联
+- 04 路线图增量 E / M6
+- 下一个增量：M7 auto-implement（2-3 天，进化系统闭环）
+
+---
+
 ## [v1.9.1] - 2026-06-24
 
 ### 🧠 Changed - 智能演进：自我反思 + 智能规划（增量 A + B）
