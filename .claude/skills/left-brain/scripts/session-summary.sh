@@ -43,9 +43,37 @@ EOF
 
     cp "$session_file" "$SUMMARY_FILE"
     echo "✅ 会话摘要已保存: ${session_id}"
+
+    # M8 联动: 自动写 state-snapshot（向后兼容 --next 参数）
+    local next_action=""
+    local snapshot_args=("$summary")
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -m|--next)
+                next_action="$2"
+                snapshot_args+=("-m" "$2")
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    if [ -f "${SCRIPT_DIR}/state-snapshot.js" ]; then
+        node "${SCRIPT_DIR}/state-snapshot.js" save "${snapshot_args[@]}" 2>&1 | head -5 || true
+    fi
 }
 
 load_summary() {
+    # M8 优先: 加载 state-snapshot（更丰富），如果不存在 fallback 到旧摘要
+    if [ -f "${SCRIPT_DIR}/state-snapshot.js" ]; then
+        local snap_out=$(node "${SCRIPT_DIR}/state-snapshot.js" load 2>/dev/null)
+        if [ -n "$snap_out" ]; then
+            echo "$snap_out"
+            return
+        fi
+    fi
+
     if [ -f "$SUMMARY_FILE" ]; then
         local content=$(grep -A 100 '## 对话内容' "$SUMMARY_FILE" | head -20)
         local decisions=$(grep -A 10 '## 关键决策' "$SUMMARY_FILE" | grep -E '^\s*[-·]' | head -5)

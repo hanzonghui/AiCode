@@ -38,7 +38,8 @@ node scripts/会话快照/load.js v1.1
 
 | 状态 | 时间 | 中文标签 | 标题 | 启动 |
 |:-----|:-----|:---------|:-----|:-----|
-| ⭐ **最新** | 2026-06-24 23:27 | milestone-M7 | M7 auto-implement 闭环完成（自主模式） | [▶ 复制](#启动-milestone-M7) |
+| ⭐ **最新** | 2026-06-24 23:58 | milestone-M8 | M8 state-snapshot 完成（自主模式三连） | [▶ 复制](#启动-milestone-M8) |
+|                    | 2026-06-24 23:27 | milestone-M7 | M7 auto-implement 闭环完成（自主模式） | [▶ 复制](#启动-milestone-M7) |
 |                    | 2026-06-24 22:52 | milestone-M6 | M6 向量检索 E1 TF-IDF 完成（自主模式） | [▶ 复制](#启动-milestone-M6) |
 |                    | 2026-06-24 17:30 | v1.9-final,v2.0.0-autonomous,daily-summary,resume- | v1.9.1/2/3 + v2.0.0 P0-1 完成 + 最高指令落地 + 文档全同步，明日继续 | [▶ 复制](#启动-v1-9-final-v2-0-0-autonomous-daily-summary-resume-) |
 |                    | 2026-06-24 17:05 | v1.9.3,highest-directive,v2-rewrite,done | v1.9.3 完成 + 智能演进最高指令 + v2.0 路线重写 | [▶ 复制](#启动-v1-9-3-highest-directive-v2-rewrite-done) |
@@ -107,7 +108,23 @@ node scripts/会话快照/load.js latest
 ```
 
 ---
-### <a id="启动-milestone-M7"></a>📦 milestone-M7（最新）
+### <a id="启动-milestone-M8"></a>📦 milestone-M8（最新）
+
+**时间**：2026-06-24 23:58:48
+**中文标签**：milestone-M8
+**快照文件**：`.claude/snapshots/2026-06-24-23-58-48-milestone-M8.md`
+
+```
+我们之前的工作已快照在 .claude/snapshots/2026-06-24-23-58-48-milestone-M8.md。
+标题: M8 state-snapshot 完成（自主模式三连）
+标签: milestone-M8
+
+下一步：M9 任务复杂度评分 或 M8 测试跨会话真实场景
+```
+
+---
+
+### <a id="启动-milestone-M7"></a>📦 milestone-M7
 
 **时间**：2026-06-24 23:27:59
 **中文标签**：milestone-M7

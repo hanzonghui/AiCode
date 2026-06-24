@@ -176,6 +176,58 @@
 
 ---
 
+## [v2.3.0] - 2026-06-24
+
+### 🔗 Added - 增量 G：跨会话状态续接（M8 完成 · 自主模式三连）
+
+**背景**：04 路线图增量 G 计划中项。L5 体验升级，新会话首轮自动续接工作现场。
+**模式**：本次在 `🤖 自主模式 ON` 下连续完成 M6 + M7 + M8 三个增量。
+
+### Added - state-snapshot.js 核心引擎
+- 路径：`.claude/skills/left-brain/scripts/state-snapshot.js`（约 250 行）
+- **JSON + Markdown 双格式落盘**（程序读 JSON，人读 MD）
+- 字段：version / saved_at / session_id / summary / plan_status / current_plan / recent_files_modified / pending_todos / kb_recent / autonomous_state / proactive_anomalies / next_action
+
+### Added - 6 个数据收集器
+1. `collectPlanStatus` — 从 pending-plans.json + plan-execution-log.json 推断 plan 状态
+2. `collectRecentFiles` — `git log --name-only -n 5` 拿最近改动文件
+3. `collectRecentKB` — 按 KB id 倒序取最近 5 条
+4. `collectPendingTodos` — 从 04 路线图"⏳ 计划中"行推断
+5. `collectAutonomous` — 读 autonomous-state.json
+6. `collectAnomalies` — 读 anomalies.json 取最近 3 条
+
+### Changed - session-summary.sh 联动
+- `save` 子命令末尾自动调 `state-snapshot.js save`（写双份）
+- `load` 子命令优先调 `state-snapshot.js load`（fallback 到旧摘要）
+- 向后兼容：旧调用方式 `bash session-summary.sh save "..."` 仍工作
+
+### Added - test-state-snapshot.js 测试
+- 路径：`.claude/skills/left-brain/scripts/test-state-snapshot.js`
+- **42/42 全过**
+- 覆盖：6 个收集器 / save+load 一致性 / renderMarkdown / 500 字符截断 / 无文件 fallback / CLI / 字段完整性
+
+### Changed - package.json
+- 新增 4 个 npm script：`state:snapshot` / `state:load` / `state:status` / `test:state`
+- `npm test` 链追加 state-snapshot 测试
+
+### 已知 Bug（不在 M8 范围）
+- autonomous.js 在 PowerShell + Node 24 下 enable 后**不写磁盘**，但 status 仍显示 ON（疑似进程内缓存）
+- state-snapshot.js 对此**鲁棒**：文件不存在时 fallback 到默认值
+- 建议后续 M9/M+ 修复
+
+### Files（增量 G / M8）
+- 新增：`.claude/skills/left-brain/scripts/state-snapshot.js`（约 250 行）
+- 新增：`.claude/skills/left-brain/scripts/test-state-snapshot.js`（约 220 行）
+- 修改：`.claude/skills/left-brain/scripts/session-summary.sh`（save/load 联动）
+- 修改：`package.json`（4 个 npm script + test 链）
+- 快照：`.claude/snapshots/2026-06-24-23-58-48-milestone-M8.md`
+
+### 关联
+- 04 路线图增量 G / M8
+- 下一个增量：M9 任务复杂度评分（智能调度优化）
+
+---
+
 ## [v1.9.1] - 2026-06-24
 
 ### 🧠 Changed - 智能演进：自我反思 + 智能规划（增量 A + B）
