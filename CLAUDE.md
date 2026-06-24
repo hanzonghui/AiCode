@@ -4,6 +4,8 @@
 > **上下文分片**（v1.4）：`.claudeignore` 已排除大文件/归档目录。AI 不要主动读这些路径，也不要全局扫描仓库；确需扫描时必须先询问用户。
 >
 > 🚨 **最高指令（2026-06-24）**：本工程的核心目标是 **智能演进**（围绕 04 纲领 4 大智能增量 L1→L5 路径）。git 管理 / 多用户 / 权限 / 审计 / 团队产品化等**均非核心**。评估任何新功能/任务时，先问"这能帮 Claude 变智能吗？"→ 否则降级或拒绝。详见 `.claude/memory/priority-intelligent-evolution.md`。
+>
+> 🚀 **自主模式（v2.0.0）**：用户可启动 `/autonomous` 让 Claude 自主决策开发。开关 ON 期间不逐步确认（适合离开）。关闭用 `/autonomous-stop`。详见 `04_自我演进路线.md` 顶部"🚀 自主演进模式"段。
 
 ---
 
@@ -129,6 +131,8 @@ AiCode/
 | 重置会话 | `/clear` |
 | **切快照模式** | `/snap-mode off\|manual\|milestone\|auto\|reset` |
 | **强制存快照** | `/snap-save "标题" "标签"` |
+| **自主模式 ON** | `/autonomous "我离开1小时"`（开关 ON，Claude 自主开发不询问） |
+| **自主模式 OFF** | `/autonomous-stop`（回到正常模式） |
 
 ---
 

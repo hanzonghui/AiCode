@@ -1,10 +1,23 @@
 # Claude Code 增强工程
 
-> 一个**会自己调度、自己记忆、自己归档、自己兜底、自己进化**的 Claude Code 工作空间。**15 个测试文件 / 181 项断言全过**（见下方"测试数据"章节），实测并行加速 20%。
+> 一个**会自己调度、自己记忆、自己归档、自己兜底、自己进化**的 Claude Code 工作空间。**15+ 个测试文件 / 380+ 项断言全过**（见下方"测试数据"章节），实测并行加速 20%。
 >
 > **定位**：我们不增强 Claude 大模型本身，而是增强 **Claude Code 客户端 Agent** —— 通过调度、记忆、工具、工作流、自动化，让同样的 Claude 模型发挥出 2-5 倍效率。
 
 [![CI](https://github.com/<USER>/<REPO>/actions/workflows/test.yml/badge.svg)](https://github.com/<USER>/<REPO>/actions/workflows/test.yml)
+
+---
+
+## 🆕 最新功能（v2.0.0）
+
+**🚀 自主演进模式**：用户可启动 `/autonomous` 开关让 Claude **自主决策开发**（不逐步确认）。适合离开时无人值守，让 Claude 自己跑智能增量。详见 `04_自我演进路线.md`。
+
+- 打开：`/autonomous 我离开1小时` 或 `npm run autonomous:on`
+- 关闭：`/autonomous-stop` 或 `npm run autonomous:off`
+- 状态：session-init 顶部 Step 7 显式显示 🤖 ON / 🙋 OFF
+
+**v1.9.1/2/3 四大智能增量**（全部完成）：
+- A 自我反思 / B 智能规划（含方案 A 桥接执行）/ C 主动发现 / D 自动化修复
 
 ---
 
