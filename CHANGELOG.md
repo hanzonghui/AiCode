@@ -5,6 +5,51 @@
 
 ---
 
+## [v1.9.1] - 2026-06-24
+
+### 🧠 Changed - 智能演进：自我反思（增量 A）
+
+v1.9.1 是 v1.9 之后的"**智能增量首发版**"，围绕用户终极愿景"让 Claude 日常开发越来越智能、越来越主动"启动。
+**核心理念**：把"用户当裁判"改为"AI 写完代码自己检查"。
+
+### Added - 自我反思引擎（4 个内置规则）
+
+| 规则 | 触发 | 检测 |
+|:-----|:-----|:-----|
+| `code-completeness` | Edit/Write *.js | console.log 残留 / debugger 断点 / 大括号不匹配 |
+| `test-trigger` | Edit/Write 非 test-*.js | 提醒对应 test 文件是否需更新 |
+| `todo-scan` | Edit/Write *.js | TODO/FIXME/XXX/HACK 标记 |
+| `doc-version` | Edit/Write *.md | 过时版本号（v1.0/v1.5/v1.2 等）|
+
+### Changed
+
+- **PostToolUse hook** 从占位改为调用 `self-reflect.js`（永不阻塞主流程）
+- **`session-init.sh`** Step 5 顶部展示最近 5 条反思反馈
+- **04 自我进化循环系统设计文档**：升级为"自我进化+智能演进纲领"，加入核心使命 + 三大智能增量路线
+
+### Files
+
+- 新增：`scripts/orchestrator/reflection/self-reflect.js`（核心引擎）
+- 新增：`scripts/orchestrator/reflection/test-self-reflect.js`（38/38 通过）
+- 修改：`.claude/skills/left-brain/scripts/posttool-hook.sh`（接入自检）
+- 修改：`.claude/skills/left-brain/scripts/session-init.sh`（顶部展示反馈）
+- 修改：`04_自我进化循环系统设计.md`（增量 A 标完成）
+- 修改：`package.json`（npm test 接入）
+- 修改：`.gitignore`（排除 reflections.jsonl）
+
+### 真实运行效果
+
+- 捕获 2 条反思：console.log 残留 + TODO×1
+- Step 5 顶部正确显示反思条目
+- npm test 全部通过（19 个测试文件）
+
+### 下一步
+
+- 增量 B：智能任务规划（planner 升级 + plan/act 协议）
+- 增量 C：主动发现问题（SessionStart anomaly scan）
+
+---
+
 ## [v1.9.0] - 2026-06-24
 
 ### 🔴 Changed - 基础设施补齐（核心）

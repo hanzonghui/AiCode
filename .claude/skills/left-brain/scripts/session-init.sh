@@ -56,5 +56,27 @@ echo "  日期: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "  知识库: $KNOWLEDGE_DIR"
 echo "  会话记录: $SESSIONS_DIR"
 echo ""
+
+echo "🔍 Step 5: 自我反思反馈（v1.9.1+ 智能增量 A）"
+REFLECTION_FILE="${SKILL_DIR}/memory/reflections.jsonl"
+if [ -f "$REFLECTION_FILE" ] && [ -s "$REFLECTION_FILE" ]; then
+    count=$(wc -l < "$REFLECTION_FILE")
+    echo "  📋 上次会话自检反馈: ${count} 条（显示最近 5 条）"
+    tail -5 "$REFLECTION_FILE" | while IFS= read -r line; do
+        # 用 node 解析 JSON（更可靠，Windows 上 python 转义坑多）
+        echo "$line" | node -e "
+let s=''; process.stdin.on('data',d=>s+=d); process.stdin.on('end',()=>{
+  try {
+    const d = JSON.parse(s);
+    const icon = {error:'🔴',warning:'🟡',info:'🟢'}[d.severity] || '🟢';
+    console.log('    ' + icon + ' [' + d.rule + '] ' + d.file_path + ': ' + d.message);
+  } catch { console.log('    ' + s.slice(0, 80)); }
+});
+" 2>/dev/null
+    done
+else
+    echo "  ✨ 无历史反馈（上次会话自检全过，或还没触发过）"
+fi
+echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✅ 初始化完成！"

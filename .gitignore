@@ -32,6 +32,9 @@ target/
 .claude/skills/left-brain/memory/memos-tier.json
 .claude/skills/left-brain/memory/logs/memos-evolution.jsonl
 
+# 自我反思反馈队列（PostToolUse 写入，会话级别）
+.claude/skills/left-brain/memory/reflections.jsonl
+
 # 会话级快照模式覆盖（/snap-mode 写入，会话结束可清）
 .claude/session-snap-mode.json
 
