@@ -94,6 +94,11 @@
             "command": "node H:/AI-han/AiCode/scripts/orchestrator/hooks/dispatch-decision.js",
             "timeout": 3,
             "async": true
+          },
+          {
+            "type": "command",
+            "command": "node H:/AI-han/AiCode/scripts/orchestrator/hooks/prompt-status.js",
+            "timeout": 2
           }
         ]
       }
