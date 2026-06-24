@@ -38,7 +38,8 @@ node scripts/会话快照/load.js v1.1
 
 | 状态 | 时间 | 中文标签 | 标题 | 启动 |
 |:-----|:-----|:---------|:-----|:-----|
-| ⭐ **最新** | 2026-06-25 01:16 | 首次跑通 | evolve | [▶ 复制](#启动-首次跑通) |
+| ⭐ **最新** | 2026-06-25 01:23 | auto-stop-milestone | Stop自动: doc-sync-rule: 04_自我演进路线.md 完成 E/F/G/M9 状æ | [▶ 复制](#启动-auto-stop-milestone) |
+|                    | 2026-06-25 01:16 | 首次跑通 | evolve | [▶ 复制](#启动-首次跑通) |
 |                    | 2026-06-24 23:58 | milestone-M8 | M8 state-snapshot 完成（自主模式三连） | [▶ 复制](#启动-milestone-M8) |
 |                    | 2026-06-24 23:27 | milestone-M7 | M7 auto-implement 闭环完成（自主模式） | [▶ 复制](#启动-milestone-M7) |
 |                    | 2026-06-24 22:52 | milestone-M6 | M6 向量检索 E1 TF-IDF 完成（自主模式） | [▶ 复制](#启动-milestone-M6) |
@@ -109,7 +110,23 @@ node scripts/会话快照/load.js latest
 ```
 
 ---
-### <a id="启动-首次跑通"></a>📦 首次跑通（最新）
+### <a id="启动-auto-stop-milestone"></a>📦 auto-stop-milestone（最新）
+
+**时间**：2026-06-25 01:23:42
+**中文标签**：auto-stop-milestone
+**快照文件**：`.claude/snapshots/2026-06-25-01-23-42-auto-stop-milestone.md`
+
+```
+我们之前的工作已快照在 .claude/snapshots/2026-06-25-01-23-42-auto-stop-milestone.md。
+标题: Stop自动: doc-sync-rule: 04_自我演进路线.md 完成 E/F/G/M9 状æ
+标签: auto-stop-milestone
+
+<填入你想继续做的事>
+```
+
+---
+
+### <a id="启动-首次跑通"></a>📦 首次跑通
 
 **时间**：2026-06-25 01:16:12
 **中文标签**：首次跑通

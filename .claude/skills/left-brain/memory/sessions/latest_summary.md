@@ -1,38 +1,15 @@
-# 会话状态快照
+---
+session_id: 20260625-012342
+saved_at: 2026-06-25 01:23:42
+type: session_summary
+source: auto-save.sh
+---
+# 会话摘要（Stop hook 自动保存）
+**保存时间**: 2026-06-25 01:23:42
 
-- **版本**: v2.3.0
-- **时间**: 2026-06-24T17:20:02.015Z
-- **Session ID**: 20260624172002
-- **自主模式**: 🙋 OFF
-- **Plan 状态**: none
-
-## 对话摘要
-
-
-## 关键决策
-<!-- 由 AI 在保存前填充 -->
-
-## 待办事项
-(无)
-
-## 最近改动文件
-- .claude/skills/left-brain/memory/MEMORY.md
-- .claude/skills/left-brain/memory/associations/graph.json
-- .claude/skills/left-brain/memory/knowledge/KB-20260625-003.md
-- .claude/skills/left-brain/memory/sessions/latest_state.json
-- .claude/skills/left-brain/memory/sessions/latest_summary.md
-- .claude/skills/left-brain/memory/sessions/session_20260625-004727.md
-- .claude/skills/left-brain/memory/sessions/session_20260625-010856.md
-- .claude/rules/doc-sync.md
-- CHANGELOG.md
-- CLAUDE.md
-
-## 最近知识（KB）
-- [KB-20260625-003] [其他] doc-sync-rule: 04_自我演进路线.md 完成 E/F/G/M9 状态同步（计划中→已完成）+ L5 重对齐；新增 .claude/rules/d
-- [KB-20260625-002] [feature_full] 
-- [KB-20260625-001] [bug_fix] 
-- [KB-20260624-002] [其他] MemOS 自我进化记忆 OS 已实现：tiered-memory（hot/warm/cold）+ hybrid-retrieve（关键词+字面+图谱）+ se
-- [KB-20260624-001] [其他] KB-20260624-017: 新建根级文档 05_工程能力评估_全局专家视角.md（v1.9 战略级评估）。核心结论：定位精准/工程化7.4分/自增强闭环是
-
-## 下次继续
-<!-- 由 AI 在保存前填充 -->
+## 本次新增/修改的知识
+- [KB-20260625-003] doc-sync-rule: 04_自我演进路线.md 完成 E/F/G/M9 状态同步（计划中→已完成）+ L5 重对齐；新增 .claude/rules/doc-sync.md 规则（里程碑后强制同步 04/03/CLAUDE/CHANGELOG 4 文档，防漂移）；CLAUDE.md 规则文件清单 + 快速操作表已更新。
+- [KB-20260625-002] 
+- [KB-20260625-001] 
+## 未处理的感知队列
+(空)
