@@ -64,6 +64,24 @@
 
 - `session-init.sh` 新增 Step 7（二次采样队列）和 Step 8（cron 报告），新会话启动时自动展示
 
+### 🎯 Changed - M10：任务复杂度评分驱动 Agent 数量（dispatcher.js v2.5.1）
+
+**背景**：M9 给出 0-10 复杂度评分和三档阈值，但 `decide()` 多个路径仍固定派 2 个 Agent，没有把评分转化为调度粒度。
+
+- 新增 `agentsFromScore(score)` 辅助函数：`Math.min(max_agents, Math.ceil(score / 3))`
+  - score 1-3 → 1 agent
+  - score 4-6 → 2 agents
+  - score 7-10 → 3 agents
+- 3 处固定 `agents: 2` 改为动态：
+  - 命中 `should_dispatch` 关键词路径
+  - 任务类型匹配路径（bug_fix / refactor / migration 等）
+  - 灰区 `suggested_action.agents`
+- `RULES.version` 2.5.0 → 2.5.1
+- 测试：
+  - `test-dispatcher-scoring.js` 新增 agentsFromScore + decide agents 一致性覆盖（55/55 通过）
+  - `test-dispatcher-unit.js` 灰区断言改为按 score 动态判定（65/65 通过）
+  - `test-failure-paths.js` 版本号匹配改为正则，避免硬编码 2.5.0（12/12 通过）
+
 ### Files
 
 - 新增：
@@ -84,10 +102,15 @@
   - `.claude/skills/left-brain/scripts/session-init.sh`（+ Step 7/8）
   - `.claude/commands/autofix.md`
   - `package.json`（+ cron-report / secondary-review / llm-fix-advisor scripts）
+  - `scripts/orchestrator/dispatcher.js`（v2.5.1 M10 agents 动态化）
+  - `scripts/orchestrator/test-dispatcher-scoring.js`（+ agents 覆盖）
+  - `scripts/orchestrator/test-dispatcher-unit.js`（灰区 agents 动态断言）
+  - `scripts/orchestrator/test-failure-paths.js`（版本号正则匹配）
 
 ### 关联
 
 - 命中 04 文档 §0.4 增量 A/C/D
+- 命中 04 文档 §0.4 M9/M10 任务复杂度评分深化
 - 关联 `.claude/rules/doc-sync.md` 文档同步规则
 - 全量测试：`npm test` 全过（测试数因新增模块增长）
 

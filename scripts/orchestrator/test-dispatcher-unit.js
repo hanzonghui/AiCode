@@ -21,6 +21,7 @@ const {
   estimateFileCount,
   estimateModuleCount,
   detectTaskType,
+  agentsFromScore,
 } = require('./dispatcher');
 
 let pass = 0, fail = 0;
@@ -164,7 +165,7 @@ section('decide() 完整分支覆盖');
   assert(r.dispatch === null, '出口 8: 灰区（dispatch=null）', `reason=${r.reason}`);
   assert(r.gray_zone_data !== undefined, '出口 8: gray_zone_data 存在');
   assert(r.gray_zone_data.fileCount === 3, '出口 8: gray_zone_data.fileCount=3');
-  assert(r.suggested_action && r.suggested_action.agents === 2, '出口 8: suggested 派 2 个');
+  assert(r.suggested_action && r.suggested_action.agents === agentsFromScore(r.complexity_score), '出口 8: suggested agents 由 score 决定', `agents=${r.suggested_action?.agents} score=${r.complexity_score}`);
 }
 
 // ==================== 5. confidence 兜底 ====================

@@ -10,7 +10,7 @@
  *   - 边界（钳制 0 和 10）
  */
 
-const { scoreComplexity, decide, RULES } = require('./dispatcher');
+const { scoreComplexity, decide, agentsFromScore, RULES } = require('./dispatcher');
 
 let pass = 0, fail = 0;
 const fails = [];
@@ -184,6 +184,48 @@ section('CLI 输出 complexity 字段');
   const parsed = JSON.parse(out);
   assert(typeof parsed.complexity_score === 'number', 'CLI 输出含 complexity_score', `out=${out.slice(0, 200)}`);
   assert(typeof parsed.complexity_band === 'string', 'CLI 输出含 complexity_band');
+}
+
+// ==================== 11. agentsFromScore ====================
+section('agentsFromScore 按复杂度派 Agent');
+
+{
+  assert(agentsFromScore(0) === 0, 'score 0 → 0 agent');
+  assert(agentsFromScore(1) === 1, 'score 1 → 1 agent');
+  assert(agentsFromScore(3) === 1, 'score 3 → 1 agent');
+  assert(agentsFromScore(4) === 2, 'score 4 → 2 agents');
+  assert(agentsFromScore(6) === 2, 'score 6 → 2 agents');
+  assert(agentsFromScore(7) === 3, 'score 7 → 3 agents');
+  assert(agentsFromScore(9) === 3, 'score 9 → 3 agents');
+  assert(agentsFromScore(10) === 3, 'score 10 受 max_agents=3 限制');
+}
+
+// ==================== 12. decide agents 与 score 一致 ====================
+section('decide agents 动态跟随复杂度');
+
+{
+  // 命中 should_dispatch 关键词
+  const r1 = decide('全面排查多模块问题');
+  assert(r1.dispatch === true, '强信号任务 dispatch=true');
+  assert(r1.agents === agentsFromScore(r1.complexity_score), '关键词命中 agents 由 score 决定', `agents=${r1.agents} score=${r1.complexity_score}`);
+
+  // 任务类型匹配
+  const r2 = decide('修一下 UserService 的 bug');
+  if (r2.dispatch === true) {
+    assert(r2.agents === agentsFromScore(r2.complexity_score), 'bug_fix 类型 agents 由 score 决定', `agents=${r2.agents} score=${r2.complexity_score}`);
+  }
+
+  // 灰区 suggested_action.agents
+  const r3 = decide('分析 OrderService 的代码');
+  if (r3.suggested_action) {
+    assert(r3.suggested_action.agents === agentsFromScore(r3.complexity_score), '灰区 suggested_action.agents 由 score 决定', `agents=${r3.suggested_action.agents} score=${r3.complexity_score}`);
+  }
+
+  // 高分任务应派 3 个
+  const r4 = decide('全面完整并行分析前端 Vue + 后端 Spring Boot + 数据库表结构 + 缓存 Redis + 多模块全栈重构跨模块');
+  if (r4.dispatch === true) {
+    assert(r4.agents === RULES.should_dispatch.max_agents, '极复杂任务派满 max_agents', `agents=${r4.agents}`);
+  }
 }
 
 // ==================== 汇总 ====================

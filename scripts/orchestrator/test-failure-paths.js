@@ -54,7 +54,7 @@ console.log('【1/4】dispatcher RULES 损坏暴露测试');
   try {
     // 1.1 故意把 RULES 版本号改坏（破坏语法）
     const broken = original.replace(
-      "version: '2.5.0'",
+      /version:\s*'[\d.]+'/,
       "version: BROKEN_SYNTAX"  // 故意语法错误
     );
     fs.writeFileSync(dispatcherPath, broken);

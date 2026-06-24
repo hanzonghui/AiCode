@@ -27,9 +27,9 @@
 // ==================== 规则配置（内联，避免 YAML 依赖）====================
 
 const RULES = {
-  version: '2.5.0',
+  version: '2.5.1',
   updated: '2026-06-25',
-  changelog: 'v2.5.0: 加 scoreComplexity 0-10 复杂度评分（M9）',
+  changelog: 'v2.5.1: scoreComplexity 动态决定派 Agent 数量（M10）',
 
   // 强信号：不派子代理
   dont_dispatch: {
@@ -230,6 +230,22 @@ function scoreComplexity(text) {
   };
 }
 
+/**
+ * v2.5.1 M10: 根据复杂度评分决定派几个 Agent
+ *
+ * 公式：Math.min(max_agents, Math.ceil(score / 3))
+ *   score 1-3  → 1 agent
+ *   score 4-6  → 2 agents
+ *   score 7-9  → 3 agents
+ *   score 10   → 3 agents（受 max_agents 限制）
+ *
+ * @param {number} score 复杂度评分 0-10
+ * @returns {number} 建议 Agent 数量
+ */
+function agentsFromScore(score) {
+  return Math.min(RULES.should_dispatch.max_agents, Math.ceil(score / 3));
+}
+
 // ==================== 核心决策 ====================
 
 function decide(taskText) {
@@ -256,7 +272,7 @@ function decide(taskText) {
   if (dispatchKw) {
     return {
       dispatch: true,
-      agents: 2,
+      agents: agentsFromScore(complexity.score),
       reason: `命中"派子代理"关键词: "${dispatchKw}"`,
       layer: 1,
       confidence: confidence('high'),
@@ -296,7 +312,7 @@ function decide(taskText) {
   if (RULES.should_dispatch.task_types.includes(taskType)) {
     return {
       dispatch: true,
-      agents: 2,
+      agents: agentsFromScore(complexity.score),
       reason: `任务类型 "${taskType}" 通常需要多角度分析`,
       layer: 1,
       confidence: confidence('medium'),
@@ -342,8 +358,8 @@ function decide(taskText) {
     gray_zone_data: { fileCount, moduleCount, taskType, text: taskText },
     suggested_action: {
       action: 'dispatch',
-      agents: 2,
-      hint: '灰区任务，保守派 2 个 Agent',
+      agents: agentsFromScore(complexity.score),
+      hint: `灰区任务，按复杂度派 ${agentsFromScore(complexity.score)} 个 Agent`,
     },
     complexity_score: complexity.score,
     complexity_band: complexity.band,
@@ -388,5 +404,6 @@ module.exports = {
   estimateModuleCount,
   detectTaskType,
   scoreComplexity,  // v2.5.0 M9
+  agentsFromScore,  // v2.5.1 M10
   RULES,
 };

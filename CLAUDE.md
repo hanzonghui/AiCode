@@ -43,7 +43,7 @@ AiCode/
 │
 ├── scripts/                           ← 核心自动化脚本
 │   ├── evolution/                     ← 🧬 自我进化系统（v1.8：每日扫描 GitHub 学习新能力）
-│   ├── orchestrator/                  ← 智能调度器（v1.9：+ metrics + logger + permissions + withRetry）
+│   ├── orchestrator/                  ← 智能调度器（v1.9：+ metrics + logger + permissions + withRetry；v2.5.1：M10 复杂度评分驱动 Agent 数量）
 │   ├── parallel/                      ← worktree 并行
 │   ├── mcp/                           ← 本地 MCP server（v1.9：+ _shared 统一错误）
 │   └── 会话快照/                       ← 快照保存/加载
