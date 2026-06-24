@@ -20,8 +20,14 @@ description: 触发完整自动修复（4 维度：uncommitted/commit、test-cov
 # 完整模式（含实际 commit）
 node scripts/orchestrator/proactive/auto-fix.js
 
+# LLM 辅助建议（为 test-coverage / deps-outdated / candidate-pending 生成 LLM 建议）
+node scripts/orchestrator/proactive/auto-fix.js --llm
+
 # 干跑模式（不写任何文件）
 node scripts/orchestrator/proactive/auto-fix.js --dry-run
+
+# LLM + 干跑
+node scripts/orchestrator/proactive/auto-fix.js --llm --dry-run
 
 # 仅看 fix-proposals 队列
 node scripts/orchestrator/proactive/auto-fix.js --list

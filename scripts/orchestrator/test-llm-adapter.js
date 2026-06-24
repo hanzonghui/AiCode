@@ -12,6 +12,7 @@
 const {
   createAdapter,
   scoreWithFallback,
+  generateWithFallback,
   HeuristicAdapter,
   AnthropicAdapter,
   OllamaAdapter,
@@ -83,6 +84,23 @@ if (originalKey) process.env.ANTHROPIC_API_KEY = originalKey;
     legacyScore.scores.decomposability === newScore.scores.decomposability);
   check('heuristic 评分结果与原版一致（reasons 数）',
     legacyScore.reasons.length === newScore.reasons.length);
+
+  // ========== 6. generateWithFallback ==========
+
+  const g1 = await generateWithFallback('test coverage is low', { maxTokens: 200 });
+  check('generateWithFallback 返回 text', typeof g1.text === 'string' && g1.text.length > 0);
+  check('generateWithFallback 默认 backend=heuristic', g1.backend === 'heuristic');
+  check('generateWithFallback 返回 tokens', g1.tokens && typeof g1.tokens.prompt === 'number');
+
+  const g2 = await generateWithFallback('npm dependencies outdated', { maxTokens: 200 });
+  check('generateWithFallback(deps) 含 npm', g2.text.includes('npm'));
+
+  const g3 = await generateWithFallback('implement candidate', { maxTokens: 200 });
+  check('generateWithFallback(candidate) 成功', g3.ok !== false);
+
+  // anthropic backend generate 失败应 fallback
+  const g4 = await generateWithFallback('测试', { maxTokens: 100 });
+  check('generate fallback 到 heuristic', g4.backend === 'heuristic');
 
   // ========== 总结 ==========
   console.log(`\n📊 llm-adapter 测试: ${pass}/${pass + fail} 通过, ${fail} 失败`);

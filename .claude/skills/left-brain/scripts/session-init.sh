@@ -107,6 +107,55 @@ else
 fi
 echo ""
 
+echo "🔍 Step 7: 二次采样队列（v2.0.1 增量 A 方案 B）"
+QUEUE_FILE="${SKILL_DIR}/memory/secondary-review-queue.json"
+if [ -f "$QUEUE_FILE" ] && [ -s "$QUEUE_FILE" ]; then
+    node -e "
+const fs = require('fs');
+const queue = JSON.parse(fs.readFileSync(process.argv[1], 'utf8') || '[]');
+if (queue.length === 0) {
+  console.log('  ✅ 二次采样队列为空');
+  process.exit(0);
+}
+const pending = queue.filter(i => i.status === 'pending');
+console.log('  📋 二次采样队列: ' + queue.length + ' 条（' + pending.length + ' 条待复查）');
+for (const item of queue.slice(0, 5)) {
+  const icon = item.status === 'pending' ? '⏳' : item.status === 'approved' ? '✅' : '❌';
+  console.log('    ' + icon + ' [' + item.id + '] ' + item.file_path);
+  for (const r of item.reasons || []) {
+    console.log('       ⚠️ ' + r);
+  }
+}
+if (queue.length > 5) console.log('    ... 还有 ' + (queue.length - 5) + ' 条');
+" "$QUEUE_FILE" 2>/dev/null
+else
+    echo "  ✅ 二次采样队列为空（无高风险改动待复查）"
+fi
+echo ""
+
+echo "🔍 Step 8: cron 报告（v2.0.1 增量 C 方案 B）"
+REPORT_FILE="${SKILL_DIR}/memory/cron-reports.json"
+if [ -f "$REPORT_FILE" ] && [ -s "$REPORT_FILE" ]; then
+    node -e "
+const fs = require('fs');
+const reports = JSON.parse(fs.readFileSync(process.argv[1], 'utf8') || '[]');
+if (reports.length === 0) {
+  console.log('  ✨ 暂无 cron 报告');
+  process.exit(0);
+}
+const daily = reports.filter(r => r.type === 'daily').slice(0, 3);
+const weekly = reports.filter(r => r.type === 'weekly').slice(0, 2);
+console.log('  📋 cron 历史报告: ' + reports.length + ' 条');
+for (const r of daily.concat(weekly)) {
+  const icon = r.error > 0 ? '🔴' : r.warning > 0 ? '🟡' : '🟢';
+  console.log('    ' + icon + ' [' + r.type + '] ' + r.timestamp.slice(0, 19) + '  total=' + r.total);
+}
+" "$REPORT_FILE" 2>/dev/null
+else
+    echo "  ✨ 暂无 cron 报告（运行 npm run cron:report:daily 生成）"
+fi
+echo ""
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✅ 初始化完成！"

@@ -24,6 +24,12 @@
 const fs = require('fs');
 const path = require('path');
 
+const {
+  addToQueue,
+  formatQueue,
+  loadQueue,
+} = require('./secondary-review');
+
 // ── 配置 ─────────────────────────────────────────────
 
 const SKILL_DIR = path.join(__dirname, '..', '..', '..', '.claude', 'skills', 'left-brain');
@@ -36,6 +42,7 @@ const RULES_ENABLED = {
   'test-trigger': true,
   'todo-scan': true,
   'doc-version': true,
+  'high-stakes-trigger': true,
 };
 
 // 过时版本关键词（文档里不应再提这些）
@@ -191,6 +198,27 @@ function checkDocVersion(filePath, content) {
   return findings;
 }
 
+// ── 规则 5：高风险改动触发二次采样（增量 A 方案 B）────────────────
+
+function checkHighStakes(filePath, content, toolName) {
+  const result = addToQueue({
+    file_path: filePath,
+    content,
+    tool_name: toolName,
+    batch_size: 1,
+  });
+
+  if (!result.added) return [];
+
+  return [{
+    rule: 'high-stakes-trigger',
+    severity: 'warning',
+    file_path: filePath,
+    message: `高风险改动已加入二次采样队列: ${result.item.id}`,
+    hint: `原因: ${result.item.reasons.join('; ')}。运行 /secondary-review 查看队列`,
+  }];
+}
+
 // ── 主入口 ─────────────────────────────────────────
 
 function selfReflect(toolName, filePath, content) {
@@ -224,6 +252,12 @@ function selfReflect(toolName, filePath, content) {
   if (RULES_ENABLED['doc-version']) {
     try {
       allFindings.push(...checkDocVersion(filePath, content));
+    } catch (e) { /* 兜底 */ }
+  }
+
+  if (RULES_ENABLED['high-stakes-trigger']) {
+    try {
+      allFindings.push(...checkHighStakes(filePath, content, toolName));
     } catch (e) { /* 兜底 */ }
   }
 
@@ -287,5 +321,6 @@ module.exports = {
   checkTestTrigger,
   checkTodoScan,
   checkDocVersion,
+  checkHighStakes,
   REFLECTION_FILE,
 };

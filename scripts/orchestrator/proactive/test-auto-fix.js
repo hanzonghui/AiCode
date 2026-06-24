@@ -18,6 +18,8 @@ const {
   PROPOSAL_FILE,
 } = require('./auto-fix');
 
+(async () => {
+
 let pass = 0, fail = 0;
 const fails = [];
 
@@ -65,7 +67,7 @@ section('Fix 1: uncommitted 安全过滤');
 section('Fix 2: test-coverage');
 
 {
-  const r = fixTestCoverage(false);
+  const r = await fixTestCoverage(false, false);
   assert(typeof r === 'object', '返回对象');
   if (r.proposed !== undefined) {
     assert(Array.isArray(r.sample), 'sample 是数组');
@@ -78,13 +80,13 @@ section('Fix 2: test-coverage');
 // dry-run 不写 proposal
 clearProposals();
 {
-  fixTestCoverage(true);
+  await fixTestCoverage(true, false);
   assert(!fs.existsSync(PROPOSAL_FILE), 'dry-run 不写 fix-proposals.json');
 }
 
 // 真实模式应写 proposal（如果有问题）
 {
-  fixTestCoverage(false);
+  await fixTestCoverage(false, false);
   if (fs.existsSync(PROPOSAL_FILE)) {
     const proposals = JSON.parse(fs.readFileSync(PROPOSAL_FILE, 'utf8'));
     const cov = proposals.find(p => p.dimension === 'test-coverage');
@@ -94,11 +96,27 @@ clearProposals();
   }
 }
 
+// LLM 模式会附加建议
+clearProposals();
+{
+  const r = await fixTestCoverage(false, true);
+  if (r.proposed !== undefined) {
+    assert(r.llmAdvice !== undefined, 'LLM 模式含 llmAdvice');
+    assert(r.llmAdvice.ok === true, 'llmAdvice 成功');
+    assert(typeof r.llmAdvice.advice === 'string', 'advice 是字符串');
+    assert(r.llmAdvice.advice.length > 0, 'advice 非空');
+
+    const proposals = JSON.parse(fs.readFileSync(PROPOSAL_FILE, 'utf8'));
+    const cov = proposals.find(p => p.dimension === 'test-coverage');
+    assert(cov && cov.reason.includes('LLM 建议'), 'proposal reason 含 LLM 建议');
+  }
+}
+
 // ==================== 3. fixDepsOutdated ====================
 section('Fix 3: deps-outdated');
 
 {
-  const r = fixDepsOutdated(false);
+  const r = await fixDepsOutdated(false, false);
   assert(typeof r === 'object', '返回对象');
   if (r.proposed !== undefined) {
     assert(Array.isArray(r.sample), 'sample 是数组');
@@ -110,17 +128,25 @@ section('Fix 3: deps-outdated');
 // dry-run 不写 proposal
 clearProposals();
 {
-  fixDepsOutdated(true);
+  await fixDepsOutdated(true, false);
   assert(!fs.existsSync(PROPOSAL_FILE), 'dry-run 不写 fix-proposals.json');
+}
+
+// LLM 模式附加建议
+clearProposals();
+{
+  const r = await fixDepsOutdated(false, true);
+  if (r.proposed !== undefined) {
+    assert(r.llmAdvice !== undefined, 'LLM 模式含 llmAdvice');
+    assert(r.llmAdvice.ok === true, 'llmAdvice 成功');
+  }
 }
 
 // ==================== 4. fixCandidatePending ====================
 section('Fix 4: candidate-pending');
 
-(async () => {
-
 {
-  const r = await fixCandidatePending(false);
+  const r = await fixCandidatePending(false, false);
   assert(typeof r === 'object', '返回对象');
   if (r.proposed !== undefined) {
     assert(typeof r.target === 'string', 'target 是字符串');
@@ -134,8 +160,18 @@ section('Fix 4: candidate-pending');
 // dry-run 不写 proposal
 clearProposals();
 {
-  await fixCandidatePending(true);
+  await fixCandidatePending(true, false);
   assert(!fs.existsSync(PROPOSAL_FILE), 'dry-run 不写 fix-proposals.json');
+}
+
+// LLM 模式附加建议
+clearProposals();
+{
+  const r = await fixCandidatePending(false, true);
+  if (r.proposed !== undefined) {
+    assert(r.llmAdvice !== undefined, 'LLM 模式含 llmAdvice');
+    assert(r.llmAdvice.ok === true, 'llmAdvice 成功');
+  }
 }
 
 // ==================== 5. autoFixConservative ====================

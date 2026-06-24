@@ -5,6 +5,94 @@
 
 ---
 
+## [Unreleased] - 智能增量 A/C/D 方案 B（v2.0.1）
+
+### 🔍 Added - 增量 A 方案 B：二次采样验证（secondary-review）
+
+**背景**：高风险改动（dispatcher.js、self-reflect.js、package.json、04.md 等）需要第二双眼睛复查，避免单一 Claude 实例在 PostToolUse hook 中犯错。
+
+- 新增 `scripts/orchestrator/reflection/secondary-review.js`
+  - 5 类高风险判定：核心调度/反射/进化文件、根级配置/纲领文档、.claude/rules 规则文件、单次改动 >5 文件、安全敏感关键词
+  - 队列持久化到 `.claude/skills/left-brain/memory/secondary-review-queue.json`
+  - CLI：`status / clear / add / approve <id> / reject <id>`
+  - 去重：同一文件同一原因最近 50 条内不重复
+  - 永不 throw
+- 扩展 `self-reflect.js`：新增 `high-stakes-trigger` 规则，Edit/Write 后自动评估并加入队列
+- 新增 `.claude/commands/secondary-review.md`：/secondary-review 命令文档
+- 新增测试：`scripts/orchestrator/reflection/test-secondary-review.js`（50/50 通过）
+
+### 📅 Added - 增量 C 方案 B：后台 cron 主动报告（cron-report）
+
+**背景**：主动扫描只在 SessionStart 跑，用户离开期间的问题无法及时报告。需要后台定时生成日报/周报。
+
+- 新增 `scripts/orchestrator/proactive/cron-report.js`
+  - 复用 `proactive-scan.detectAll(force=true)` 生成日报
+  - 周报聚合最近 7 天日报，按 message 去重
+  - delta 计算（较上次日报的变化）
+  - 历史裁剪：日报保留 ≤31 条，周报保留 ≤13 条
+  - CLI：`daily / weekly / status / clear`
+  - 永不 throw
+- 新增 `.claude/commands/cron-report.md`：/cron-report 命令文档
+- 新增 npm scripts：`cron:report:daily / weekly / status / clear` 和 `test:cron-report`
+- 新增真实 cron 调度：
+  - 日报：每天 9:37（job: c54283b7）
+  - 周报：每周一 9:42（job: f3097a09）
+- 新增测试：`scripts/orchestrator/proactive/test-cron-report.js`（54/54 通过）
+
+### 🤖 Added - 增量 D 方案 B：LLM 辅助 auto-fix
+
+**背景**：test-coverage / deps-outdated / candidate-pending 等复杂维度只生成规则化 proposal，缺少结构化建议。引入 LLM advisor 为每个 proposal 附加可执行建议。
+
+- 扩展 `scripts/orchestrator/llm-adapter.js`：新增统一 `generate(prompt, opts)` 接口
+  - HeuristicAdapter.generate：零成本模板建议（按维度关键词）
+  - Anthropic / Ollama / Cli adapter：接口预留，未来接真实模型
+  - `generateWithFallback`：任何 backend 失败自动降级到 heuristic
+- 新增 `scripts/orchestrator/proactive/llm-fix-advisor.js`
+  - 针对 test-coverage / deps-outdated / candidate-pending 构造 prompt
+  - 调用 `generateWithFallback` 生成建议
+  - 永不 throw
+- 修改 `scripts/orchestrator/proactive/auto-fix.js`
+  - fixTestCoverage / fixDepsOutdated / fixCandidatePending 支持 `useLLM`
+  - 新增 `--llm` CLI flag：`node auto-fix.js --llm`
+  - LLM 建议写入 fix-proposals.json 的 reason 字段
+  - formatReport 显示 LLM 建议摘要
+- 更新 `.claude/commands/autofix.md`：加 `--llm` 用法
+- 新增测试：`scripts/orchestrator/proactive/test-llm-fix-advisor.js`（19/19 通过）
+- 扩展测试：`scripts/orchestrator/test-llm-adapter.js` 加 generate 覆盖（23/23 通过）
+
+### 🔧 Changed - 会话初始化展示增强
+
+- `session-init.sh` 新增 Step 7（二次采样队列）和 Step 8（cron 报告），新会话启动时自动展示
+
+### Files
+
+- 新增：
+  - `scripts/orchestrator/reflection/secondary-review.js`
+  - `scripts/orchestrator/reflection/test-secondary-review.js`
+  - `scripts/orchestrator/proactive/cron-report.js`
+  - `scripts/orchestrator/proactive/test-cron-report.js`
+  - `scripts/orchestrator/proactive/llm-fix-advisor.js`
+  - `scripts/orchestrator/proactive/test-llm-fix-advisor.js`
+  - `.claude/commands/secondary-review.md`
+  - `.claude/commands/cron-report.md`
+- 修改：
+  - `scripts/orchestrator/reflection/self-reflect.js`（+ high-stakes-trigger 规则）
+  - `scripts/orchestrator/llm-adapter.js`（+ generate 接口）
+  - `scripts/orchestrator/proactive/auto-fix.js`（+ --llm / useLLM）
+  - `scripts/orchestrator/proactive/test-auto-fix.js`（LLM 模式测试）
+  - `scripts/orchestrator/test-llm-adapter.js`（generate 测试）
+  - `.claude/skills/left-brain/scripts/session-init.sh`（+ Step 7/8）
+  - `.claude/commands/autofix.md`
+  - `package.json`（+ cron-report / secondary-review / llm-fix-advisor scripts）
+
+### 关联
+
+- 命中 04 文档 §0.4 增量 A/C/D
+- 关联 `.claude/rules/doc-sync.md` 文档同步规则
+- 全量测试：`npm test` 全过（测试数因新增模块增长）
+
+---
+
 ## [Unreleased] - 文档同步规则 + 演进路线对齐（v2.6.0 doc-sync）
 
 ### 📚 Added - 文档同步规则（防里程碑漂移）

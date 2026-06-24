@@ -33,6 +33,49 @@ class HeuristicAdapter {
   async score(taskText, grayData) {
     return heuristicScore(taskText, grayData);
   }
+
+  /**
+   * 启发式生成（零成本 fallback）
+   * 根据 prompt 关键词返回模板化建议，不调用真实 LLM
+   */
+  async generate(prompt, opts = {}) {
+    const p = (prompt || '').toLowerCase();
+    const maxTokens = opts.maxTokens || 500;
+
+    // test-coverage
+    if (p.includes('test') || p.includes('测试') || p.includes('coverage')) {
+      return {
+        text: '建议为每个待测文件创建 `test-<basename>.js`，覆盖：\n1. 正常路径\n2. 边界条件\n3. 异常输入\n4. 与相邻模块的集成点\n\n优先补核心调度器、反射引擎、MCP server 的测试。',
+        backend: this.name,
+        tokens: { prompt: p.length, completion: 80 },
+      };
+    }
+
+    // deps-outdated
+    if (p.includes('depend') || p.includes('依赖') || p.includes('npm') || p.includes('version')) {
+      return {
+        text: '依赖升级建议：\n1. 先 `npm outdated` 看实际版本\n2. 只升级 patch/minor，major 版本需阅读 changelog\n3. 升级后跑 `npm test` 全量回归\n4. 关键依赖（如 MCP SDK） pinning 到精确版本',
+        backend: this.name,
+        tokens: { prompt: p.length, completion: 70 },
+      };
+    }
+
+    // candidate-pending / implementation
+    if (p.includes('implement') || p.includes('实现') || p.includes('candidate')) {
+      return {
+        text: '实现候选建议：\n1. 先阅读候选仓库 README 和核心入口\n2. 在 worktree 隔离环境中实验\n3. 写一个最小可运行 demo\n4. 通过后再合并到 main\n5. 补充测试和文档',
+        backend: this.name,
+        tokens: { prompt: p.length, completion: 75 },
+      };
+    }
+
+    // 通用 fallback
+    return {
+      text: '建议：\n1. 明确问题范围\n2. 最小改动原则\n3. 补充测试\n4. 跑 `npm test` 验证\n5. 更新相关文档',
+      backend: this.name,
+      tokens: { prompt: p.length, completion: 40 },
+    };
+  }
 }
 
 // ==================== Anthropic Adapter（接口预留）====================
@@ -58,6 +101,13 @@ class AnthropicAdapter {
       '  或使用 cli adapter 通过 Claude Code CLI 调用'
     );
   }
+
+  async generate(prompt, opts = {}) {
+    throw new Error(
+      '[AnthropicAdapter] generate 未启用\n' +
+      '  启用方式：npm install @anthropic-ai/sdk，用 messages.create 实现 generate'
+    );
+  }
 }
 
 // ==================== Ollama Adapter（本地模型，接口预留）====================
@@ -78,6 +128,13 @@ class OllamaAdapter {
       '  或使用 cli adapter'
     );
   }
+
+  async generate(prompt, opts = {}) {
+    throw new Error(
+      '[OllamaAdapter] generate 未启用\n' +
+      '  启用方式：POST ' + this.baseUrl + '/api/generate'
+    );
+  }
 }
 
 // ==================== CLI Adapter（通过子进程调 Claude CLI，接口预留）====================
@@ -95,6 +152,13 @@ class CliAdapter {
       '[CliAdapter] 实际接入未启用（v1.6 仅保留接口）\n' +
       '  启用方式：用 child_process.spawn 调 ' + this.command + ' -p "<prompt>"\n' +
       '  解析 stdout 提取 JSON 评分'
+    );
+  }
+
+  async generate(prompt, opts = {}) {
+    throw new Error(
+      '[CliAdapter] generate 未启用\n' +
+      '  启用方式：用 child_process.spawn 调 ' + this.command + ' -p "<prompt>" 并解析 stdout'
     );
   }
 }
@@ -141,6 +205,21 @@ async function scoreWithFallback(taskText, grayData) {
   }
 }
 
+/**
+ * 带降级的 generate 方法（推荐使用）
+ *   - 任何 adapter 抛错 → 自动 fallback 到 HeuristicAdapter.generate
+ *   - 永不抛错给调用方
+ */
+async function generateWithFallback(prompt, opts = {}) {
+  const adapter = createAdapter();
+  try {
+    return await adapter.generate(prompt, opts);
+  } catch (e) {
+    process.stderr.write(`[llm-adapter] ${adapter.name} 生成失败，降级到 heuristic: ${e.message}\n`);
+    return new HeuristicAdapter().generate(prompt, opts);
+  }
+}
+
 module.exports = {
   HeuristicAdapter,
   AnthropicAdapter,
@@ -148,4 +227,5 @@ module.exports = {
   CliAdapter,
   createAdapter,
   scoreWithFallback,
+  generateWithFallback,
 };

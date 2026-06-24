@@ -129,6 +129,9 @@ AiCode/
 | 查看状态 | `left-brain.sh dashboard` |
 | 自我进化 | `/evolve run` 或 `npm run evolve` |
 | 检查过时 | `/evolve watch` 或 `npm run trend` |
+| **二次采样队列** | `/secondary-review status` 查看高风险改动复查队列 |
+| **cron 主动报告** | `npm run cron:report:daily` / `weekly` / `status` |
+| **自动修复** | `/autofix` 或 `node scripts/orchestrator/proactive/auto-fix.js [--llm]` |
 | **互联网搜索** | `agent-reach doctor --json` 看 13 平台状态 |
 | **GitHub 搜索** | `gh search repos "关键词" --limit 5` |
 | **B站搜索** | `bili search "关键词" -n 5` |

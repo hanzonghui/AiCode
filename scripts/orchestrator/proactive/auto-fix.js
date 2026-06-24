@@ -33,6 +33,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { advise } = require('./llm-fix-advisor');
 
 // ── 配置 ─────────────────────────────────────────────
 
@@ -177,9 +178,9 @@ function fixUncommitted(dryRun = false) {
   }
 }
 
-// ── Fix 2: test-coverage → 生成待测清单 ─────────────
+// ── Fix 2: test-coverage → 生成待测清单 + 可选 LLM 建议 ─
 
-function fixTestCoverage(dryRun = false) {
+async function fixTestCoverage(dryRun = false, useLLM = false) {
   const anomalies = loadAnomalies();
   if (!anomalies) return { skipped: true, reason: 'no anomaly data' };
 
@@ -214,19 +215,25 @@ function fixTestCoverage(dryRun = false) {
     return { skipped: true, reason: 'all files have tests' };
   }
 
+  let llmAdvice = null;
+  if (useLLM) {
+    llmAdvice = await advise('test-coverage', { missingTests }, { maxTokens: 500 });
+  }
+
   addProposal(
     'test-coverage',
     `为 ${missingTests.length} 个文件补测试`,
-    `覆盖率低于 80%，缺测试文件: ${missingTests.slice(0, 5).join(', ')}${missingTests.length > 5 ? '...' : ''}`,
+    `覆盖率低于 80%，缺测试文件: ${missingTests.slice(0, 5).join(', ')}${missingTests.length > 5 ? '...' : ''}`
+      + (llmAdvice?.ok ? `\n\n💡 LLM 建议（${llmAdvice.backend}）：\n${llmAdvice.advice}` : ''),
     dryRun
   );
 
-  return { proposed: missingTests.length, sample: missingTests.slice(0, 5) };
+  return { proposed: missingTests.length, sample: missingTests.slice(0, 5), llmAdvice };
 }
 
-// ── Fix 3: deps-outdated → npm update 建议 ──────────
+// ── Fix 3: deps-outdated → npm update 建议 + 可选 LLM 风险评估 ─
 
-function fixDepsOutdated(dryRun = false) {
+async function fixDepsOutdated(dryRun = false, useLLM = false) {
   const pkgPath = path.join(WORKSPACE_ROOT, 'package.json');
   if (!fs.existsSync(pkgPath)) return { skipped: true, reason: 'no package.json' };
 
@@ -238,19 +245,25 @@ function fixDepsOutdated(dryRun = false) {
 
   if (loosePinned.length === 0) return { skipped: true, reason: 'all deps pinned' };
 
+  let llmAdvice = null;
+  if (useLLM) {
+    llmAdvice = await advise('deps-outdated', { loosePinned }, { maxTokens: 500 });
+  }
+
   addProposal(
     'deps-outdated',
     `跑 npm outdated 检查实际过期情况`,
-    `${loosePinned.length} 个浮动版本依赖，建议检查：\n  ${loosePinned.slice(0, 5).map(([n, v]) => `${n}@${v}`).join('\n  ')}${loosePinned.length > 5 ? '\n  ...' : ''}`,
+    `${loosePinned.length} 个浮动版本依赖，建议检查：\n  ${loosePinned.slice(0, 5).map(([n, v]) => `${n}@${v}`).join('\n  ')}${loosePinned.length > 5 ? '\n  ...' : ''}`
+      + (llmAdvice?.ok ? `\n\n💡 LLM 建议（${llmAdvice.backend}）：\n${llmAdvice.advice}` : ''),
     dryRun
   );
 
-  return { proposed: loosePinned.length, sample: loosePinned.slice(0, 5).map(([n]) => n) };
+  return { proposed: loosePinned.length, sample: loosePinned.slice(0, 5).map(([n]) => n), llmAdvice };
 }
 
-// ── Fix 4: candidate-pending → 调 implementer ───────
+// ── Fix 4: candidate-pending → 调 implementer + 可选 LLM 实现计划 ─
 
-async function fixCandidatePending(dryRun = false) {
+async function fixCandidatePending(dryRun = false, useLLM = false) {
   const candPath = path.join(WORKSPACE_ROOT, 'data', 'github', 'candidates.json');
   if (!fs.existsSync(candPath)) return { skipped: true, reason: 'no candidates' };
 
@@ -270,6 +283,14 @@ async function fixCandidatePending(dryRun = false) {
     return { dryRun: true, wouldImplement: candidates.length };
   }
 
+  // 一次最多 implement 一个（避免阻塞）
+  const target = candidates[0];
+
+  let llmAdvice = null;
+  if (useLLM) {
+    llmAdvice = await advise('candidate-pending', { candidate: target }, { maxTokens: 500 });
+  }
+
   // 调 implementer 链路
   let implementer;
   try {
@@ -278,27 +299,23 @@ async function fixCandidatePending(dryRun = false) {
     addProposal(
       'candidate-pending',
       `手动跑 implementer 消化 ${candidates.length} 个候选`,
-      `implementer.js 加载失败，需手动执行：node scripts/evolution/daily-evolution.js implement`,
+      `implementer.js 加载失败，需手动执行：node scripts/evolution/daily-evolution.js implement`
+        + (llmAdvice?.ok ? `\n\n💡 LLM 建议（${llmAdvice.backend}）：\n${llmAdvice.advice}` : ''),
       dryRun
     );
-    return { error: 'implementer not loadable', proposed: candidates.length };
+    return { error: 'implementer not loadable', proposed: candidates.length, llmAdvice };
   }
 
-  // 一次最多 implement 一个（避免阻塞）
-  const target = candidates[0];
-  try {
-    // 注：implementCandidate 是 async，可能需要交互
-    // 这里只生成 proposal 让用户手动 /ok 后再调
-    addProposal(
-      'candidate-pending',
-      `实现候选: ${target.name || target.id}`,
-      `候选描述: ${target.description || target.summary || '（无描述）'}\n  仓库: ${target.repo || target.url || '未知'}\n  手动跑: node scripts/evolution/daily-evolution.js implement`,
-      dryRun
-    );
-    return { proposed: 1, target: target.name || target.id };
-  } catch (e) {
-    return { error: e.message };
-  }
+  // 注：implementCandidate 是 async，可能需要交互
+  // 这里只生成 proposal 让用户手动 /ok 后再调
+  addProposal(
+    'candidate-pending',
+    `实现候选: ${target.name || target.id}`,
+    `候选描述: ${target.description || target.summary || '（无描述）'}\n  仓库: ${target.repo || target.url || '未知'}\n  手动跑: node scripts/evolution/daily-evolution.js implement`
+      + (llmAdvice?.ok ? `\n\n💡 LLM 建议（${llmAdvice.backend}）：\n${llmAdvice.advice}` : ''),
+    dryRun
+  );
+  return { proposed: 1, target: target.name || target.id, llmAdvice };
 }
 
 // ── 主入口 ─────────────────────────────────────────
@@ -326,23 +343,25 @@ function autoFixConservative(opts = {}) {
 }
 
 /**
- * 完整模式：4 项全跑
+ * 完整模式：4 项全跑，可选 LLM 辅助建议
  */
 async function autoFixFull(opts = {}) {
   const dryRun = opts.dryRun || false;
+  const useLLM = opts.useLLM || false;
   const beforeCount = loadProposals().length;
   const results = {};
 
   try { results.uncommitted = fixUncommitted(dryRun); } catch (e) { results.uncommitted = { error: e.message }; }
-  try { results['test-coverage'] = fixTestCoverage(dryRun); } catch (e) { results['test-coverage'] = { error: e.message }; }
-  try { results['deps-outdated'] = fixDepsOutdated(dryRun); } catch (e) { results['deps-outdated'] = { error: e.message }; }
-  try { results['candidate-pending'] = await fixCandidatePending(dryRun); } catch (e) { results['candidate-pending'] = { error: e.message }; }
+  try { results['test-coverage'] = await fixTestCoverage(dryRun, useLLM); } catch (e) { results['test-coverage'] = { error: e.message }; }
+  try { results['deps-outdated'] = await fixDepsOutdated(dryRun, useLLM); } catch (e) { results['deps-outdated'] = { error: e.message }; }
+  try { results['candidate-pending'] = await fixCandidatePending(dryRun, useLLM); } catch (e) { results['candidate-pending'] = { error: e.message }; }
 
   const afterCount = loadProposals().length;
 
   return {
     mode: 'full',
     dryRun,
+    useLLM,
     timestamp: new Date().toISOString(),
     results,
     proposalsAdded: afterCount - beforeCount,
@@ -354,9 +373,9 @@ async function autoFixFull(opts = {}) {
  */
 function formatReport(report) {
   const lines = [];
-  const { mode, dryRun, results } = report;
+  const { mode, dryRun, useLLM, results } = report;
 
-  lines.push(`🔧 Auto-fix [${mode}${dryRun ? ' | dry-run' : ''}]:`);
+  lines.push(`🔧 Auto-fix [${mode}${dryRun ? ' | dry-run' : ''}${useLLM ? ' | LLM' : ''}]:`);
 
   for (const [dim, r] of Object.entries(results)) {
     if (r.committed) {
@@ -372,6 +391,13 @@ function formatReport(report) {
       lines.push(`  ❌ [${dim}] error: ${r.error}`);
     } else {
       lines.push(`  ❓ [${dim}] ${JSON.stringify(r)}`);
+    }
+
+    if (r.llmAdvice?.ok) {
+      const adviceLines = r.llmAdvice.advice.split('\n').slice(0, 4);
+      for (const al of adviceLines) {
+        lines.push(`      🤖 ${al}`);
+      }
     }
   }
 
@@ -389,6 +415,7 @@ if (require.main === module) {
   const args = process.argv.slice(2);
   const auto = args.includes('--auto');
   const dryRun = args.includes('--dry-run');
+  const useLLM = args.includes('--llm');
   const listProposals = args.includes('--list');
 
   try {
@@ -407,7 +434,7 @@ if (require.main === module) {
     } else {
       const report = auto
         ? autoFixConservative({ dryRun })
-        : await autoFixFull({ dryRun });
+        : await autoFixFull({ dryRun, useLLM });
       console.log(formatReport(report));
     }
   } catch (e) {
