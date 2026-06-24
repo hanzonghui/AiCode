@@ -82,6 +82,18 @@
   - `test-dispatcher-unit.js` 灰区断言改为按 score 动态判定（65/65 通过）
   - `test-failure-paths.js` 版本号匹配改为正则，避免硬编码 2.5.0（12/12 通过）
 
+### 🤖 Added - 自主模式规则补充（autonomous.md）
+
+**背景**：自主模式下完成一个选题后直接进入下一个选题，缺少强制快照和上下文清理，导致 token 消耗增加、上下文污染。
+
+- 新增 `.claude/rules/autonomous.md`
+  - 每个阶段/选题完成后 **必须保存快照**（不受 30 分钟间隔限制）
+  - 进入下一个选题前 **必须保存进度**（含下一个考虑的选题）
+  - 保存后立即 **`/clear` 清理上下文**，再加载状态执行下一个选题
+  - 目的：控制 token 消耗 + 防止上下文污染 + 保持选题起点清晰
+- 更新 `04_自我演进路线.md` 自主模式段，引用 `.claude/rules/autonomous.md`
+- 更新 `CLAUDE.md` 规则文件清单，新增 `autonomous.md` 行
+
 ### Files
 
 - 新增：
@@ -93,6 +105,7 @@
   - `scripts/orchestrator/proactive/test-llm-fix-advisor.js`
   - `.claude/commands/secondary-review.md`
   - `.claude/commands/cron-report.md`
+  - `.claude/rules/autonomous.md`
 - 修改：
   - `scripts/orchestrator/reflection/self-reflect.js`（+ high-stakes-trigger 规则）
   - `scripts/orchestrator/llm-adapter.js`（+ generate 接口）
@@ -106,6 +119,8 @@
   - `scripts/orchestrator/test-dispatcher-scoring.js`（+ agents 覆盖）
   - `scripts/orchestrator/test-dispatcher-unit.js`（灰区 agents 动态断言）
   - `scripts/orchestrator/test-failure-paths.js`（版本号正则匹配）
+  - `04_自我演进路线.md`（+ 自主模式选题切换规则）
+  - `CLAUDE.md`（+ autonomous.md 规则清单）
 
 ### 关联
 

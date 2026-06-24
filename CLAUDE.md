@@ -157,7 +157,7 @@ AiCode/
 | `daily-maintenance.md` | 每日更新、Changelog |
 | `self-discipline.md` | 改动后自动收尾（测试/快照/KB/文档） |
 | `doc-sync.md` | 里程碑/增量后同步 04/03/CLAUDE/CHANGELOG，防漂移 |
-| `git-branch.md` | **个人工程默认在 main 工作**，需切换/创建/删除分支必须先问用户 |
+| `autonomous.md` | 🤖 自主模式 ON 期间行为规则（选题后快照、切题前清理上下文） |
 ---
 
 ## 🧠 智能任务规划协议（v1.9.1 增量 B）
