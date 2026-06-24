@@ -37,6 +37,7 @@ AiCode/
 ├── .claude/                           ← Claude Code 配置
 │   ├── rules/                         ← 拆分规则（详见下方）
 │   ├── skills/left-brain/             ← 🧠 左脑记忆系统
+│   ├── skills/agent-reach/            ← 🌐 13 平台互联网路由（GitHub/B站/V2EX/RSS/任意网页）
 │   ├── commands/                      ← 常用命令
 │   └── agents/                        ← 专业子代理
 │
@@ -90,6 +91,7 @@ AiCode/
 |:-----------|:-----------|:-----|
 | `dispatcher.js` | 编排层 | 智能决定派不派子 Agent |
 | `left-brain` | 长期记忆 | 跨会话知识沉淀 |
+| `agent-reach` | 外部感知 | 13 平台互联网路由（GitHub/B站/V2EX/RSS/网页） |
 | MCP servers | 工具链 | 本地文件/数据库/网页能力 |
 | `hooks/` | 环境集成 | 自动执行启动/停止逻辑 |
 | `自我约束规范.md` | 工作流 | 改完代码自动收尾 |
@@ -127,12 +129,17 @@ AiCode/
 | 查看状态 | `left-brain.sh dashboard` |
 | 自我进化 | `/evolve run` 或 `npm run evolve` |
 | 检查过时 | `/evolve watch` 或 `npm run trend` |
+| **互联网搜索** | `agent-reach doctor --json` 看 13 平台状态 |
+| **GitHub 搜索** | `gh search repos "关键词" --limit 5` |
+| **B站搜索** | `bili search "关键词" -n 5` |
+| **任意网页** | `curl -s "https://r.jina.ai/URL"` |
 | 压缩上下文 | `/compact` |
 | 重置会话 | `/clear` |
 | **切快照模式** | `/snap-mode off\|manual\|milestone\|auto\|reset` |
 | **强制存快照** | `/snap-save "标题" "标签"` |
 | **自主模式 ON** | `/autonomous "我离开1小时"`（开关 ON，Claude 自主开发不询问） |
 | **自主模式 OFF** | `/autonomous-stop`（回到正常模式） |
+| **文档漂移检查** | `npm run doc:check` 或扫 04.md 是否还写"计划中" |
 
 ---
 
@@ -145,7 +152,8 @@ AiCode/
 | `session-memory.md` | 会话记忆、智能丢弃 |
 | `cost-control.md` | 成本控制 + Git/PR 工作流 |
 | `daily-maintenance.md` | 每日更新、Changelog |
-
+| `self-discipline.md` | 改动后自动收尾（测试/快照/KB/文档） |
+| `doc-sync.md` | 里程碑/增量后同步 04/03/CLAUDE/CHANGELOG，防漂移 |
 ---
 
 ## 🧠 智能任务规划协议（v1.9.1 增量 B）

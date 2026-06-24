@@ -5,6 +5,94 @@
 
 ---
 
+## [Unreleased] - 文档同步规则 + 演进路线对齐（v2.6.0 doc-sync）
+
+### 📚 Added - 文档同步规则（防里程碑漂移）
+
+**背景**：04 演进路线 0.4 节 增量 E/F/G 仍写"🆕 计划中"，但实际 M6/M7/M8 已交付；只有第十二章里程碑表是 ✅。**里程碑 ≠ 文档同步**的根因暴露。
+
+### Added - `.claude/rules/doc-sync.md` 新规则
+- 强制每个里程碑/增量/发版后同步 4 个根目录文档 + CHANGELOG
+- 4 文档同步矩阵：CHANGELOG（事实源）→ 04.md（0.4 节/0.5 表/里程碑）→ 03.md（P0 状态）→ CLAUDE.md/02.md（按需）
+- 4 触发节点：增量/里程碑/发版/路线图重写
+- 集成到增量 C（proactive-scan）作为候选维度 `doc-drift`
+- 与 self-discipline 决策树联动（🏁 里程碑级 = 必做文档同步）
+- 维护清单：测试 `test-doc-sync.js` + npm script `npm run doc:check`
+
+### Changed - 04 演进路线对齐
+- 增量 E：🆕 计划中 → ✅ 已完成（M6 v2.1.0，TF-IDF 60 条 KB 召回率 80%）
+- 增量 F：🆕 计划中 → ✅ 已完成（M7 v2.2.0，4 道安全闸门 27/27 测试）
+- 增量 G：🆕 计划中 → ✅ 已完成（M8 v2.3.0，state-snapshot 6 收集器 42/42 测试）
+- 新增增量 M9 段：任务复杂度评分 v2.5.0（scoreComplexity 0-10 + 三档阈值 + 43/43 测试）
+- 0.5 长期愿景表：L2/L3/L4 从"升级中"→ ✅ 已达，L5 进入实测期
+- 0.4 节末段追加 M10 候选（score→agents 动态化，0.5 天）
+- 顶部"最近一次同步"段新增
+- 清理 G 段重复段落
+
+### Changed - CLAUDE.md 规则文件清单
+- 新增 `doc-sync.md` 行
+- 快速操作表加 `文档漂移检查` 行（npm run doc:check）
+
+### Files
+- 新增：`.claude/rules/doc-sync.md`（约 130 行）
+- 修改：`04_自我演进路线.md`（0.4 节 E/F/G/M9、0.5 长期愿景表、顶部同步段）
+- 修改：`CLAUDE.md`（规则文件清单 + 快速操作表）
+
+### 关联
+- 命中 `priority-intelligent-evolution` 文档纪律
+- 为后续 doc-drift 自动检测提供规则基线
+- 自我约束级别：🏁 里程碑（自动收尾）
+
+---
+
+## [Unreleased] - 工具链就绪（外部信息获取层 v2.4）
+
+### 🌐 Added - Agent Reach 工具链（13 平台路由器）
+
+**背景**：Claude 此前 "知道怎么搜" 但 "搜不到" —— skill 已加载但底层 CLI 全缺。2026-06-24 安装 agent-reach + 6 个零配置 CLI，**L1（感知）层正式打通**：所有子代理（planner/explorer/qa-reviewer）从此能调用 5 个平台的真实数据。
+
+### Added - 7 个新工具（用户级配置，不进 git）
+| 工具 | 版本 | 来源 | 用途 |
+|:-----|:-----|:-----|:-----|
+| agent-reach | 1.5.0 | pipx+GitHub | 13 平台路由核心 |
+| gh CLI | latest | winget | GitHub 搜索/Issue/PR（GH_TOKEN 已持久化到 User 环境变量） |
+| bili-cli | 0.6.2 | pipx | B站搜索/热门/详情 |
+| yt-dlp | 2026.06.09 | pipx | YouTube 字幕/元数据 |
+| mcporter | latest | npm -g | MCP 客户端（Exa 等） |
+| feedparser | 6.0.12 | pip | RSS/Atom 订阅 |
+| pipx | 1.14.1 | pip | Python 工具隔离器（先决条件） |
+
+### Real-world 烟测结果（4/4 真实工作）
+- ✅ V2EX：拿到 "庆祝 Steam Machine 发布" 真实帖子
+- ✅ B站：搜 "claude" 拿到 129 万播放的 Claude Code 教程
+- ✅ 任意网页（Jina Reader）：example.com
+- ✅ GitHub：搜 "claude-code" 拿到 134k ⭐ 官方仓库
+- ⚠️ YouTube：工具就绪，需 cookie 看 metadata（YouTube 反爬限制）
+
+### 5 个零配置平台就绪
+GitHub / B站 / V2EX / RSS / 任意网页 — **立即可用**，无需任何登录
+
+### 8 个登录类平台（未装，按用户决定）
+小红书/Reddit/Twitter/LinkedIn/Exa/小宇宙/雪球/微博 — 需要 cookie/API key
+
+### Security
+- ✅ Token 不进 AI 对话（环境变量方式导入）
+- ✅ 规则写入左脑：[[never-paste-secrets-into-context]]
+- ⚠️ 旧 token `ghp_iUp7s8WC...` 已在对话里泄露，**建议手动 revoke**
+
+### Files
+- 修改：`CLAUDE.md`（工作空间结构段 + 增强层表 + 快速操作）
+- 修改：`02_工作空间功能介绍.md`（新增 2.18 章节 + 现状速览）
+- 修改：本文件
+- **不动代码**：纯文档 + 用户级工具安装
+
+### 关联
+- 命中 `priority-intelligent-evolution` L1（感知）层
+- 为后续 `/evolve run` 自我进化提供真实 GitHub 搜索能力（之前因网络阻塞退化为缓存）
+- 下次会话自动受益：左脑 KB 可记录"用 agent-reach 搜 X"
+
+---
+
 ## [Unreleased] - 路线图更新（v2.x 预览）
 
 ### ✅ M9：任务复杂度评分（智能调度优化）- 已完成
