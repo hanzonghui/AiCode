@@ -53,7 +53,8 @@
       "Bash(npm run *)",
       "PowerShell(bash .claude/skills/left-brain/scripts/session-summary.sh load)",
       "PowerShell(bash .claude/skills/left-brain/scripts/session-summary.sh list 2>&1 | Select-Object -First 20)",
-      "PowerShell(bash .claude/skills/left-brain/scripts/session-summary.sh list)"
+      "PowerShell(bash .claude/skills/left-brain/scripts/session-summary.sh list)",
+      "PowerShell(python -m pip install --user pipx 2>&1 | Select-Object -Last 20)"
     ]
   },
   "hooks": {
