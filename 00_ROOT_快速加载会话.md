@@ -38,7 +38,8 @@ node scripts/会话快照/load.js v1.1
 
 | 状态 | 时间 | 中文标签 | 标题 | 启动 |
 |:-----|:-----|:---------|:-----|:-----|
-| ⭐ **最新** | 2026-06-24 23:58 | milestone-M8 | M8 state-snapshot 完成（自主模式三连） | [▶ 复制](#启动-milestone-M8) |
+| ⭐ **最新** | 2026-06-25 01:16 | 首次跑通 | evolve | [▶ 复制](#启动-首次跑通) |
+|                    | 2026-06-24 23:58 | milestone-M8 | M8 state-snapshot 完成（自主模式三连） | [▶ 复制](#启动-milestone-M8) |
 |                    | 2026-06-24 23:27 | milestone-M7 | M7 auto-implement 闭环完成（自主模式） | [▶ 复制](#启动-milestone-M7) |
 |                    | 2026-06-24 22:52 | milestone-M6 | M6 向量检索 E1 TF-IDF 完成（自主模式） | [▶ 复制](#启动-milestone-M6) |
 |                    | 2026-06-24 17:30 | v1.9-final,v2.0.0-autonomous,daily-summary,resume- | v1.9.1/2/3 + v2.0.0 P0-1 完成 + 最高指令落地 + 文档全同步，明日继续 | [▶ 复制](#启动-v1-9-final-v2-0-0-autonomous-daily-summary-resume-) |
@@ -108,7 +109,23 @@ node scripts/会话快照/load.js latest
 ```
 
 ---
-### <a id="启动-milestone-M8"></a>📦 milestone-M8（最新）
+### <a id="启动-首次跑通"></a>📦 首次跑通（最新）
+
+**时间**：2026-06-25 01:16:12
+**中文标签**：首次跑通
+**快照文件**：`.claude/snapshots/2026-06-25-01-16-12-首次跑通.md`
+
+```
+我们之前的工作已快照在 .claude/snapshots/2026-06-25-01-16-12-首次跑通.md。
+标题: evolve
+标签: 首次跑通
+
+<填入你想继续做的事>
+```
+
+---
+
+### <a id="启动-milestone-M8"></a>📦 milestone-M8
 
 **时间**：2026-06-24 23:58:48
 **中文标签**：milestone-M8

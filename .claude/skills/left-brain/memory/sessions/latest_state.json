@@ -1,27 +1,44 @@
 {
   "version": "2.3.0",
-  "saved_at": "2026-06-24T15:58:24.008Z",
-  "session_id": "20260624155824",
-  "summary": "M8 接入 session-summary.sh + npm 脚本 + 42/42 测试，准备 commit",
+  "saved_at": "2026-06-24T17:08:59.435Z",
+  "session_id": "20260624170859",
+  "summary": "自主模式重新确认 + doc-sync 工作完成（commit bd0cec5）。04.md E/F/G/M9 状态对齐 + 新增 .claude/rules/doc-sync.md + CHANGELOG 顶部 Unreleased 段。下一候选：M10 dispatcher.js suggested_action.agents 改 Math.ceil(score/3)（0.5 天），或处理遗留 4 个未提交文件（agent-reach v2.4）。",
   "plan_status": "none",
   "current_plan": null,
   "recent_files_modified": [
+    ".claude/rules/doc-sync.md",
     "CHANGELOG.md",
+    "CLAUDE.md",
+    ".claude/skills/left-brain/memory/knowledge/KB-20260625-001.md",
+    ".claude/skills/left-brain/memory/knowledge/KB-20260625-002.md",
     "package.json",
+    "scripts/orchestrator/autonomous.js",
+    "scripts/orchestrator/dispatcher.js",
+    "scripts/orchestrator/test-autonomous.js",
+    "scripts/orchestrator/test-dispatcher-scoring.js",
+    "scripts/orchestrator/test-failure-paths.js",
+    ".claude/settings.local.json",
+    ".claude/skills/left-brain/memory/sessions/latest_state.json",
+    ".claude/skills/left-brain/memory/sessions/latest_summary.md",
+    ".claude/skills/left-brain/scripts/session-summary.sh",
+    ".claude/skills/left-brain/scripts/state-snapshot.js",
+    ".claude/skills/left-brain/scripts/test-state-snapshot.js",
     "scripts/evolution/auto-implement.js",
     "scripts/evolution/implementer.js",
-    "scripts/evolution/test-auto-implement.js",
-    ".claude/skills/left-brain/scripts/left-brain.sh",
-    ".gitignore",
-    "scripts/orchestrator/recall/semantic-recall.js",
-    "scripts/orchestrator/recall/test-semantic-recall.js",
-    ".claude/settings.local.json"
+    "scripts/evolution/test-auto-implement.js"
   ],
-  "pending_todos": [
-    "M8: 跨会话状态续接（增量 G）",
-    "M9: 任务复杂度评分（智能调度优化）"
-  ],
+  "pending_todos": [],
   "kb_recent": [
+    {
+      "id": "KB-20260625-002",
+      "category": "feature_full",
+      "content": ""
+    },
+    {
+      "id": "KB-20260625-001",
+      "category": "bug_fix",
+      "content": ""
+    },
     {
       "id": "KB-20260624-002",
       "category": "其他",
@@ -36,16 +53,6 @@
       "id": "KB-20260623-016",
       "category": "技术",
       "content": "v1.9 快照模式可控化：4 模式（off/manual/milestone/auto）+ 会话级切换 + 状态栏可见 + /snap-mode /snap-s"
-    },
-    {
-      "id": "KB-20260623-015",
-      "category": "其他",
-      "content": "快照系统新增 .claude/snapshot-config.json 配置，mode 可选 off/manual/milestone/auto，默认 mile"
-    },
-    {
-      "id": "KB-20260623-014",
-      "category": "其他",
-      "content": "核心文档编号完成（2026-06-23）：5 个根目录文档按业务流程重命名为 00_ROOT_快速加载会话.md、01_AI-ClaudeCode-最佳实践精简"
     }
   ],
   "autonomous_state": {
@@ -53,5 +60,5 @@
   },
   "proactive_anomalies": [],
   "recent_reflections": [],
-  "next_action": "下一步：commit M8"
+  "next_action": null
 }
