@@ -650,7 +650,44 @@ function saveAuditReport(result, content) {
   return { saved, filePath };
 }
 
-// ── 主入口 ───────────────────────────────────────────
+// ── v3.0.3 M19-4: audit 跑完自动同步到 bridge ─────────
+
+/**
+ * audit 跑完自动调 queue-bridge 同步 P0/P1/P2 到 next 队列
+ * P0/P1 自动入队（高 ROI 立即行动）
+ * P2 只提示，不入队（远期调研参考，避免污染队列）
+ */
+function autoSyncAuditToBridge(result, auditFilePath) {
+  const { p0, p1, p2 } = result.suggestions;
+  const total = p0.length + p1.length + p2.length;
+  if (total === 0) {
+    console.error('\n💡 无建议项，跳过 bridge 同步（用 queue:sync 看其他源）');
+    return;
+  }
+
+  console.error('\n🔗 M19-4: 自动同步到 queue-bridge（写入 evolution-plan.json next）');
+  try {
+    // 调 bridge CLI（不 require 它避免循环依赖）
+    const { execFileSync } = require('child_process');
+    const bridgePath = path.join(__dirname, '..', '..', 'bridge', 'queue-bridge.js');
+    const out = execFileSync('node', [bridgePath, '--source', 'audit', '--dry-run'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      cwd: WORKSPACE_ROOT,
+    });
+    // 解析 dry-run 输出里的"新增"数量
+    const addedMatch = out.match(/✅ 新增:\s*(\d+)/);
+    const addedCount = addedMatch ? parseInt(addedMatch[1], 10) : 0;
+    console.error(`  📋 bridge dry-run 发现 ${addedCount} 个可入队候选`);
+
+    if (addedCount > 0) {
+      console.error(`  💡 确认入队：npm run queue:sync -- --source audit`);
+    }
+  } catch (e) {
+    console.error(`  ⚠️ bridge 同步失败: ${e.message}（不影响 audit 完成）`);
+  }
+}
+
 
 function runQuickAudit() {
   const generatedAt = timestamp();
@@ -687,6 +724,8 @@ if (require.main === module) {
       console.log(content);
       if (saved) {
         console.error(`\n📁 报告已保存: ${path.relative(WORKSPACE_ROOT, filePath)}`);
+        // v3.0.3 M19-4: audit 跑完自动同步到 bridge + 提示
+        autoSyncAuditToBridge(result, filePath);
       }
     } else if (cmd === 'json') {
       const result = runQuickAudit();

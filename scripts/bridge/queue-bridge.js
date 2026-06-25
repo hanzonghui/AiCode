@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * queue-bridge.js — 候选汇聚桥梁（v3.0.1 M16）
+ * queue-bridge.js — 候选汇聚桥梁（v3.0.1 M16 → v3.0.3 M19-2）
  *
  * 作用：
- *   - 把 3 个分散的候选来源汇聚到 evolution-plan.json（next 队列）
+ *   - 把 4 个分散的候选来源汇聚到 evolution-plan.json（next 队列）
  *     1. data/github/candidates.json  — /evolve GitHub 扫描结果（suggestion='adopt'）
  *     2. 04_自我演进路线.md 末尾 backlog 段 — /audit 自审整合建议
- *     3. .claude/audits/audit-*.md     — /audit 历史报告（取最新一份的 P0/P1）
+ *     3. .claude/audits/audit-*.md    — /audit 浅层报告第 6 段（P0/P1/P2）
+ *     4. .claude/audits/research-*.md — Deep-research 调研报告
  *
  * 设计原则：
  *   - **半自动**：人工决定何时跑（不绑 cron），跑后输出去重报告让人工 review
@@ -16,13 +17,14 @@
  *   - **零依赖**：复用 evolution-lock.queue() + 解析 markdown
  *
  * 用法：
- *   node queue-bridge.js                  # 全量汇聚（3 个源）
+ *   node queue-bridge.js                  # 全量汇聚（4 个源）
  *   node queue-bridge.js --source evolve # 只看 evolve 候选
  *   node queue-bridge.js --source audit  # 只看 audit 候选
  *   node queue-bridge.js --dry-run       # 只打印不入队
  *
  * @since v3.0.1 (2026-06-25) M16
- * @source 04_自我演进路线.md §0.4 M16
+ * @updated v3.0.3 (2026-06-26) M19-2（+ audit 第 6 段 + research 报告）
+ * @source 04_自我演进路线.md §0.4 M16 + M19
  */
 
 const fs = require('fs');
@@ -70,6 +72,7 @@ function slugify(s) {
 function makeId(source, key) {
   if (source === 'evolve') return `EVOLVE-${slugify(key)}`;
   if (source === 'audit') return `AUDIT-${key}`; // key 形如 '20260625-1'
+  if (source === 'research') return `RESEARCH-${slugify(key)}`; // v3.0.3 M19-2
   return slugify(key);
 }
 
@@ -157,7 +160,131 @@ function readRoadmapBacklog(filePath) {
   return results;
 }
 
-// ── 源 3：.claude/audits/audit-*.md（最新一份） ─────────
+// ── 源 3a：.claude/audits/audit-*.md 第 6 段（v3.0.3 M19-2）────
+
+/**
+ * 读 audit 浅层报告第 6 段（P0/P1/P2 建议）
+ *
+ * 报告格式（quick-audit.js 输出）：
+ *   ## 6. 💡 优化建议（按 ROI 排序）
+ *   ### 🔴 P0
+ *   1. **[type]** title（effort）
+ *      - detail
+ *   ### 🟡 P1
+ *   ...
+ *   ### 🟢 P2
+ *   ...
+ *
+ * 取最新一份 audit 报告（避免重复入队旧建议）
+ *
+ * @returns {Array<{id, title, source, priority, detail}>}
+ */
+function readAuditBacklog() {
+  if (!fs.existsSync(AUDIT_DIR)) return [];
+  const files = fs.readdirSync(AUDIT_DIR)
+    .filter(f => /^audit-\d{8}-\d{4}\.md$/.test(f))
+    .sort();
+  if (files.length === 0) return [];
+  // 取最新一份（避免重复入队已处理项）
+  const latest = files[files.length - 1];
+  return _parseAuditReport(path.join(AUDIT_DIR, latest));
+}
+
+/**
+ * 解析单份 audit 报告（提取第 6 段 P0/P1/P2）
+ */
+function _parseAuditReport(filePath) {
+  if (!fs.existsSync(filePath)) return [];
+  let text;
+  try { text = fs.readFileSync(filePath, 'utf8'); }
+  catch { return []; }
+
+  // 抓取"## 6."段（最后一段 ## 6.💡 优化建议）
+  const sectionMatch = text.match(/## 6\.[\s\S]*?(?=\n## |\n--- |\s*$)/);
+  if (!sectionMatch) return [];
+  const section = sectionMatch[0];
+
+  const results = [];
+  // 按 emoji 切分 P0/P1/P2 段
+  const pSections = section.split(/(?=### 🔴 P0|### 🟡 P1|### 🟢 P2)/);
+
+  for (const ps of pSections) {
+    const pMatch = ps.match(/### (🔴|🟡|🟢) P(\d)/);
+    if (!pMatch) continue;
+    const priority = `P${pMatch[2]}`;
+
+    // 每条: `1. **[type]** title（effort）` + `   - detail`
+    const itemRe = /\d+\.\s+\*\*\[([^\]]+)\]\*\*\s+([^\n（]+)（([^）]+)）\s*\n\s*-\s+([^\n]+)/g;
+    let m;
+    while ((m = itemRe.exec(ps)) !== null) {
+      const [, type, title, effort, detail] = m;
+      const id = makeId('audit', `${type}-${slugify(title)}`);
+      results.push({
+        id,
+        title: title.trim(),
+        source: 'audit',
+        priority: priority === 'P0' ? 'P1' : priority === 'P1' ? 'P2' : 'P3', // audit P0 → evolution P1
+        detail: detail.trim(),
+        effort: effort.trim(),
+        type: type.trim(),
+      });
+    }
+  }
+  return results;
+}
+
+// ── 源 3b：.claude/audits/research-*.md（v3.0.3 M19-2）────
+
+/**
+ * 读 research 报告（Deep-research 产物）
+ * 取头部 30 行（标题 + 调研范围 + 推荐路径摘要）
+ *
+ * @returns {Array<{id, title, source, priority, detail}>}
+ */
+function readResearchDigest() {
+  if (!fs.existsSync(AUDIT_DIR)) return [];
+  const files = fs.readdirSync(AUDIT_DIR)
+    .filter(f => /^research-.+\.md$/.test(f))
+    .sort();
+  if (files.length === 0) return [];
+
+  const results = [];
+  for (const f of files) {
+    const fp = path.join(AUDIT_DIR, f);
+    let text;
+    try { text = fs.readFileSync(fp, 'utf8'); }
+    catch { continue; }
+
+    // 抓标题（第一个 # 开头）
+    const titleMatch = text.match(/^# (.+)$/m);
+    if (!titleMatch) continue;
+    const title = titleMatch[1].trim();
+
+    // 抓调研日期
+    const dateMatch = text.match(/调研日期[：:]\s*(\d{4}-\d{2}-\d{2})/);
+    const date = dateMatch ? dateMatch[1] : f.match(/(\d{4}\d{2}\d{2})/)?.[1]?.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') || 'unknown';
+
+    // 抓推荐路径（看有没有 "推荐" 或 "路径" 关键词）
+    const recommendMatch = text.match(/(推荐[路径\d]*)[\s\S]{0,200}/);
+    const detail = recommendMatch
+      ? recommendMatch[0].split('\n').slice(0, 3).join(' ').trim()
+      : '调研报告（无推荐路径）';
+
+    // ID = RESEARCH-{filename-slug}
+    const id = makeId('research', f.replace(/\.md$/, ''));
+
+    results.push({
+      id,
+      title,
+      source: 'research',
+      priority: 'P2', // research 报告默认 P2（远期调研参考，不直接行动）
+      detail: `${date} | ${detail}`,
+      effort: '调研参考',
+      type: 'research',
+    });
+  }
+  return results;
+}
 
 /**
  * 读最新一份 audit 报告
@@ -190,6 +317,8 @@ function aggregate(sources, opts = {}) {
   const all = [
     ...(sources.includes('evolve') ? readEvolveCandidates() : []),
     ...(sources.includes('audit') ? readRoadmapBacklog(opts.roadmapPath) : []),
+    ...(sources.includes('audit') ? readAuditBacklog() : []),
+    ...(sources.includes('audit') ? readResearchDigest() : []),
   ];
 
   // dedupe by id
@@ -312,7 +441,7 @@ function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
   const sourceArg = args.indexOf('--source');
-  let sources = ['evolve', 'audit'];
+  let sources = ['evolve', 'audit', 'research'];
   if (sourceArg !== -1 && args[sourceArg + 1]) {
     sources = [args[sourceArg + 1]];
   }
@@ -362,6 +491,9 @@ if (require.main === module) {
 module.exports = {
   readEvolveCandidates,
   readRoadmapBacklog,
+  readAuditBacklog,    // v3.0.3 M19-2
+  readResearchDigest,  // v3.0.3 M19-2
+  _parseAuditReport,   // v3.0.3 M19-2 (内部但导出供测试)
   aggregate,
   enqueueAll,
   writeSyncLog,

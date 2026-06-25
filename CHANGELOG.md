@@ -10,6 +10,30 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Added - 阶段 8：M19 audit 闭环（已完成 · v3.0.3）
+
+- **M19-1**：04.md 末尾加 `## 十三、Backlog（待整合候选 · 动态同步自 /audit）` 段
+  - P0/P1/P2 三段 + 同步规则 + bridge 指针
+  - 当前 P2 段 1 项：`AUDIT-extend-skills`（来自 `/audit` 浅层报告）
+- **M19-2**：`scripts/bridge/queue-bridge.js` 扩展 2 源
+  - `readAuditBacklog()`：读 `.claude/audits/audit-*.md` 第 6 段（P0/P1/P2）
+  - `readResearchDigest()`：读 `.claude/audits/research-*.md` 头部 30 行
+  - ID 命名空间：`AUDIT-{type-slug}` / `RESEARCH-{slug}`
+  - 优先级映射：audit P0 → 进化 P1（高 ROI 立即行动）
+- **M19-4**：`scripts/orchestrator/audit/quick-audit.js` 跑完自动调 `queue-bridge --dry-run`
+  - 软引用（不强制改 evolution-plan.json，用户手动确认）
+- **M19-5**：04.md 顶部 line 14 后加 `## 🔬 最近调研（动态 · ...）` 段
+  - 最近 1 份 research 摘要 + 最近 3 份 audit 浅层报告
+- 新增 `scripts/orchestrator/test-audit-loop.js` **34/34 通过**
+  - 覆盖：readAuditBacklog / readResearchDigest / 命名空间 / 优先级映射 / aggregate / enqueueAll / dry-run / 真跑通 / 评价事件
+- 全量回归通过：bridge 45 + metrics 42 + graph-dispatch 35 + audit-loop 34 = **156/156**
+- 顺手修 `quick-audit.js` 误删 `runQuickAudit` 函数（插入时没保留原行）
+
+**L5 终极智能影响**：
+- 闭环了"自我评价"层 — 之前 /audit 建议只在报告里看，现在进 04.md backlog + next 队列
+- 让 L5 5 条达成条件第 1 条有持续证据
+- 用户不再"忘了审计建议"——下次开会话顶部 line 14 一眼看到
+
 ### Added - 阶段 7：M18 /evolve GitHub API token 认证（已完成 · v3.0.2）
 
 - 修复 `scripts/evolution/github-scanner.js` — 加 `getGitHubToken()` 3 路径：
