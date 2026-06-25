@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * handoff.js — 会话切换助手（v3.0.4 M21）
+ * handoff.js — 会话切换助手（v3.0.4 M21 + M22）
  *
  * 作用：
  *   - 自动保存当前会话进度（强制写快照）
  *   - 生成"接续 prompt"（拼装 4 段：摘要 / 待办 / 下阶段 / 约束）
  *   - 写 autonomous-state.json.awaiting_handoff 标记待接续
- *   - 输出 CLI 提示"下个会话新窗口输入：<prompt> 即可接续"
+ *   - --auto 模式：打开 VS Code 新窗口 + 把启动命令复制到剪贴板
+ *   - 无参数模式：读 latest_state.json.next_action，自动继续下一步
  *
  * 设计原则：
  *   - **不破坏**已有 /autonomous / /snap-save 流程
@@ -17,8 +18,11 @@
  * 用法：
  *   node handoff.js "M20: decision-assistant.js"   # 强制写快照 + 生成 prompt
  *   node handoff.js "M20" --dry-run                # 只打印 prompt 不写
+ *   node handoff.js "M20" --auto                   # 开 VS Code 新窗口并复制命令
+ *   node handoff.js                                # 无参数，继续摘要里的 next_action
  *
  * @since v3.0.4 (2026-06-26) M21
+ * @updated v3.0.4 (2026-06-26) M22 — VS Code 新窗口 + 无参数
  * @source 04_自我演进路线.md §0.7 演进计划的功能怎么来的
  */
 
@@ -34,6 +38,8 @@ const MEMORY_DIR = path.join(SKILL_DIR, 'memory');
 const AUTONOMOUS_STATE_FILE = path.join(MEMORY_DIR, 'autonomous-state.json');
 const SNAPSHOT_FILE = path.join(MEMORY_DIR, 'sessions', 'latest_state.json');
 const SESSION_SUMMARY_SCRIPT = path.join(SKILL_DIR, 'scripts', 'session-summary.sh');
+const HANDOFF_DIR = path.join(WORKSPACE_ROOT, '.claude', 'handoff');
+const CONTINUE_PROMPT_FILE = path.join(HANDOFF_DIR, 'continue.prompt.md');
 
 // ── 工具函数 ─────────────────────────────────────────
 
@@ -61,6 +67,106 @@ function saveAutonomousState(state) {
 
 function loadSnapshot() {
   return readJSON(SNAPSHOT_FILE, null);
+}
+
+/**
+ * 无参数时，从 snapshot 解析下一步要做什么
+ * 优先取 next_action，其次从 summary 里解析 "下一步:" / "next:" / "下一步"
+ * @returns {{title: string, nextTitle: string} | null}
+ */
+function resolveNextFromSnapshot() {
+  const snap = loadSnapshot();
+  if (!snap) return null;
+
+  // 1. 优先显式 next_action
+  if (snap.next_action && typeof snap.next_action === 'string') {
+    return { title: snap.next_action, nextTitle: snap.next_action };
+  }
+
+  // 2. 从 summary 解析
+  if (snap.summary && typeof snap.summary === 'string') {
+    const summary = snap.summary;
+    const patterns = [
+      /下一步[:：]\s*(.+?)(?:\n|$)/i,
+      /next[:：]\s*(.+?)(?:\n|$)/i,
+      /下一步\s+(.+?)(?:\n|$)/i,
+    ];
+    for (const re of patterns) {
+      const m = summary.match(re);
+      if (m && m[1].trim()) {
+        const t = m[1].trim();
+        return { title: t, nextTitle: t };
+      }
+    }
+  }
+
+  return null;
+}
+
+function ensureHandoffDir() {
+  if (!fs.existsSync(HANDOFF_DIR)) {
+    fs.mkdirSync(HANDOFF_DIR, { recursive: true });
+  }
+}
+
+/**
+ * 把 prompt 写入文件，供 --append-system-prompt-file 使用
+ */
+function writeContinuePromptFile(prompt, nextTitle) {
+  ensureHandoffDir();
+  const header = `<!-- handoff continue prompt | ${nextTitle} | ${new Date().toISOString()} -->\n\n`;
+  fs.writeFileSync(CONTINUE_PROMPT_FILE, header + prompt);
+  return CONTINUE_PROMPT_FILE;
+}
+
+/**
+ * 把文本复制到系统剪贴板
+ */
+function copyToClipboard(text) {
+  const platform = process.platform;
+  try {
+    if (platform === 'win32') {
+      const proc = spawn('cmd', ['/c', 'clip'], { stdio: ['pipe', 'ignore', 'ignore'] });
+      proc.stdin.write(text);
+      proc.stdin.end();
+      return true;
+    }
+    if (platform === 'darwin') {
+      const proc = spawn('pbcopy', [], { stdio: ['pipe', 'ignore', 'ignore'] });
+      proc.stdin.write(text);
+      proc.stdin.end();
+      return true;
+    }
+    // Linux: 优先 xclip，其次 xsel
+    for (const bin of ['xclip', 'xsel']) {
+      try {
+        const proc = spawn(bin, bin === 'xclip' ? ['-selection', 'clipboard', '-in'] : ['--clipboard', '--input'], { stdio: ['pipe', 'ignore', 'ignore'] });
+        proc.stdin.write(text);
+        proc.stdin.end();
+        return true;
+      } catch { /* try next */ }
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 打开 VS Code 新窗口
+ */
+function openVsCodeNewWindow() {
+  return new Promise((resolve) => {
+    const child = spawn('code', ['--new-window', WORKSPACE_ROOT], {
+      cwd: WORKSPACE_ROOT,
+      stdio: 'ignore',
+      detached: true,
+    });
+    child.on('error', (err) => resolve({ opened: false, error: err.message }));
+    child.on('exit', (code) => resolve({ opened: code === 0, code }));
+    // 不给太长超时，start 后尽快返回
+    setTimeout(() => resolve({ opened: true, code: null }), 1500);
+  });
 }
 
 /**
@@ -223,40 +329,39 @@ function enqueueNext(id, title, note) {
 }
 
 /**
- * 启动新 claude 子进程，自动接续下一阶段
- * 参考 autonomous-runner.js 的 spawn 模式
+ * VS Code 方案：打开新窗口 + 写入 prompt 文件 + 复制启动命令到剪贴板
+ * 由于 VS Code CLI 没有"在新终端自动执行命令"的能力，采用"窗口+剪贴板"半自动方案
  */
 function spawnClaudeContinuation(prompt, nextTitle) {
-  return new Promise((resolve) => {
-    // 优先用 CLAUDE_BIN 环境变量
-    let claudeBin = process.env.CLAUDE_BIN || 'claude';
-    if (process.platform === 'win32' && claudeBin === 'claude') {
-      const roaming = process.env.APPDATA && path.join(process.env.APPDATA, 'npm', 'claude.cmd');
-      if (roaming && fs.existsSync(roaming)) claudeBin = roaming;
+  return new Promise(async (resolve) => {
+    log('INFO', `准备 VS Code 新窗口接续: ${nextTitle}`);
+
+    // 1. 写入 prompt 文件
+    const promptFile = writeContinuePromptFile(prompt, nextTitle);
+    log('INFO', `  prompt 文件: ${promptFile}`);
+
+    // 2. 构造启动命令（用户在新窗口终端粘贴执行）
+    const claudeBin = process.env.CLAUDE_BIN || 'claude';
+    const command = `${claudeBin} --append-system-prompt-file "${promptFile}" "继续执行: ${nextTitle}"`;
+
+    // 3. 复制命令到剪贴板
+    const copied = copyToClipboard(command);
+    if (copied) {
+      log('INFO', '  启动命令已复制到剪贴板');
+    } else {
+      log('WARN', '  剪贴板复制失败，请手动复制下方命令');
     }
 
-    log('INFO', `启动新子会话自动接续: ${nextTitle}`);
-    log('INFO', `  bin: ${claudeBin}`);
+    // 4. 打开 VS Code 新窗口
+    log('INFO', '  正在打开 VS Code 新窗口...');
+    const vs = await openVsCodeNewWindow();
 
-    const child = spawn(claudeBin, ['-p', prompt], {
-      cwd: WORKSPACE_ROOT,
-      stdio: 'inherit',
-      shell: true,
-    });
-
-    child.on('exit', (code, signal) => {
-      log('INFO', `子会话结束: code=${code}, signal=${signal}`);
-      resolve({ code, signal });
-    });
-
-    child.on('error', (err) => {
-      log('ERROR', `启动子会话失败: ${err.message}`);
-      if (err.code === 'ENOENT') {
-        log('ERROR', `  找不到 '${claudeBin}'`);
-        log('ERROR', `  修复: 1) npm i -g @anthropic-ai/claude-code`);
-        log('ERROR', `       2) 或设置 CLAUDE_BIN 环境变量`);
-      }
-      resolve({ code: -1, signal: null, error: err.message });
+    resolve({
+      opened: vs.opened,
+      copied,
+      command,
+      promptFile,
+      error: vs.error || null,
     });
   });
 }
@@ -270,37 +375,46 @@ function log(level, message) {
  * 主入口
  */
 function handoff(title, opts = {}) {
-  const { nextTitle, dryRun = false, auto = false, tags = ['handoff'] } = opts;
+  let { nextTitle, dryRun = false, auto = false, tags = ['handoff'] } = opts;
 
+  // M22: 无参数时从 snapshot 解析下一步
   if (!title) {
-    throw new Error('必须提供 title（例："M20: decision-assistant.js"）');
+    const resolved = resolveNextFromSnapshot();
+    if (!resolved) {
+      throw new Error('无参数时需要 latest_state.json 存在且包含 next_action 或 summary 中的"下一步"。也可显式提供 title（例：node handoff.js "M20: decision-assistant.js"）');
+    }
+    title = resolved.title;
+    nextTitle = nextTitle || resolved.nextTitle;
   }
+
+  const resolvedTitle = title;
+  const resolvedNext = nextTitle || title;
 
   const snapshot = loadSnapshot();
   const autonomousState = loadAutonomousState();
 
   // 1. 生成接续 prompt
-  const prompt = buildHandoffPrompt(title, nextTitle || title, snapshot, autonomousState);
+  const prompt = buildHandoffPrompt(resolvedTitle, resolvedNext, snapshot, autonomousState);
 
   // 2. dry-run 模式只打印
   if (dryRun) {
-    return { dryRun: true, prompt };
+    return { dryRun: true, prompt, title: resolvedTitle, nextTitle: resolvedNext };
   }
 
   // 3. 写快照
-  const saveResult = saveSnapshot(title, nextTitle || title, tags);
+  const saveResult = saveSnapshot(resolvedTitle, resolvedNext, tags);
   if (!saveResult.saved) {
     throw new Error(`快照保存失败: ${saveResult.error}`);
   }
 
   // 4. 更新 autonomous-state.json
-  markAwaitingHandoff(nextTitle || title, title);
+  markAwaitingHandoff(resolvedNext, resolvedTitle);
 
   // 5. v3.0.4 M22: --auto 模式 — 实际入队 next + spawn 新子进程
   const enqueued = enqueueNext(
-    nextTitle || 'M-next',
-    nextTitle || title,
-    `handoff from "${title}"`
+    resolvedNext,
+    resolvedNext,
+    `handoff from "${resolvedTitle}"`
   );
 
   const result = {
@@ -310,6 +424,8 @@ function handoff(title, opts = {}) {
     prompt,
     enqueued,
     auto,
+    title: resolvedTitle,
+    nextTitle: resolvedNext,
   };
 
   if (auto && !dryRun) {
@@ -323,17 +439,18 @@ function handoff(title, opts = {}) {
 
 function showHelp() {
   console.log(`
-handoff.js — 会话切换助手（v3.0.4 M21 + v3.0.4 M22 --auto）
+handoff.js — 会话切换助手（v3.0.4 M21 + M22）
 
 用法:
+  node handoff.js                                   # 无参数：继续摘要里的下一步
   node handoff.js "标题" [next-title]               # 强制存快照 + 生成 prompt
   node handoff.js "标题" --dry-run                  # 只打印 prompt 不写
-  node handoff.js "标题" "next" --auto              # 全自动：存快照 + 入队 + spawn 新子进程
+  node handoff.js "标题" [next-title] --auto        # VS Code 新窗口 + 剪贴板命令
 
 参数:
-  第一个 (必填)   当前会话标题（写快照用）
+  第一个 (可选)   当前会话标题（不写则读 snapshot.next_action）
   第二个 (可选)   下一阶段标题（默认 = 第一个）
-  --auto / -a     全自动模式（入队 next + spawn 新子进程接续）
+  --auto / -a     VS Code 新窗口模式（打开新窗口 + 复制 claude 启动命令到剪贴板）
   --dry-run       只打印接续 prompt，不写快照
   --tags "tag1 tag2"  自定义快照标签
 
@@ -342,13 +459,13 @@ handoff.js — 会话切换助手（v3.0.4 M21 + v3.0.4 M22 --auto）
   2. 标记 autonomous-state.json.awaiting_handoff = true
   3. 实际入队 evolution-plan.json next（如果 ID 不存在）
   4. 输出"接续 prompt"
-  5. --auto 时直接 spawn claude -p 新子进程（不需手动 /clear）
+  5. --auto 时打开 VS Code 新窗口，并把启动命令复制到剪贴板
 `);
 }
 
 function main() {
   const args = process.argv.slice(2);
-  if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
+  if (args.includes('--help') || args.includes('-h')) {
     showHelp();
     process.exit(0);
   }
@@ -377,30 +494,46 @@ function main() {
     }
 
     console.log('✅ 会话交接完成');
+    console.log(`   标题：${result.title}`);
+    console.log(`   下一阶段：${result.nextTitle}`);
     console.log(`   快照：${result.snapshotPath}`);
     console.log(`   状态：${result.autonomousStatePath}`);
     console.log(`   next 入队：${result.enqueued ? '✅' : '⏭️ 已存在'}`);
     console.log('');
-    console.log('━'.repeat(60));
-    console.log('📋 接续 prompt（新子会话第一句）');
-    console.log('━'.repeat(60));
-    console.log(result.prompt);
-    console.log('━'.repeat(60));
 
     if (auto) {
-      console.log('');
-      console.log('🚀 --auto 模式：正在启动新子会话自动接续...');
-      spawnClaudeContinuation(result.prompt, nextTitle || title).then((r) => {
+      console.log('🚀 --auto 模式：打开 VS Code 新窗口 + 复制启动命令到剪贴板...');
+      spawnClaudeContinuation(result.prompt, result.nextTitle).then((r) => {
         if (r.error) {
-          console.error(`❌ 子会话启动失败: ${r.error}`);
+          console.error(`❌ VS Code 新窗口打开失败: ${r.error}`);
+          console.log('');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('📋 请手动打开 VS Code 新窗口，并在终端执行：');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log(r.command);
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           process.exit(1);
         }
-        console.log(`✅ 子会话结束 (code=${r.code})`);
+        console.log('');
+        console.log('✅ VS Code 新窗口已打开');
+        console.log(`   prompt 文件：${r.promptFile}`);
+        console.log(`   命令已复制到剪贴板：${r.copied ? '是' : '否'}`);
+        console.log('');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📋 在新窗口终端粘贴执行（已复制到剪贴板）：');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log(r.command);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       });
     } else {
+      console.log('━'.repeat(60));
+      console.log('📋 接续 prompt（新子会话第一句）');
+      console.log('━'.repeat(60));
+      console.log(result.prompt);
+      console.log('━'.repeat(60));
       console.log('');
       console.log('💡 建议操作：');
-      console.log('   1. 加 --auto 一条命令完成（推荐）');
+      console.log('   1. 加 --auto 打开 VS Code 新窗口并复制命令（推荐）');
       console.log('   2. 手动：在 Claude Code UI 点击 "New Chat"');
       console.log('   3. 手动：输入 /clear 后粘上面 prompt');
     }
@@ -422,4 +555,11 @@ module.exports = {
   clearAwaitingHandoff,
   loadAutonomousState,
   loadSnapshot,
+  resolveNextFromSnapshot,
+  writeContinuePromptFile,
+  copyToClipboard,
+  openVsCodeNewWindow,
+  spawnClaudeContinuation,
+  CONTINUE_PROMPT_FILE,
+  HANDOFF_DIR,
 };

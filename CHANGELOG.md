@@ -12,18 +12,19 @@
 
 ### Added - 阶段 9 续：M22 handoff --auto 全自动接续（已完成 · v3.0.4）
 
-- 升级 `scripts/orchestrator/handoff.js` v1.1.0 — 一条命令完成"存快照 + 入队 + 自动 spawn 新子会话"
-  - 新增 `--auto` / `-a` CLI 参数：全自动接续模式
+- 升级 `scripts/orchestrator/handoff.js` v1.2.0 — 一条命令完成"存快照 + 入队 + 打开 VS Code 新窗口 + 复制启动命令到剪贴板"
+  - 新增 `--auto` / `-a` CLI 参数：打开 VS Code 新窗口并把 `claude --append-system-prompt-file ...` 启动命令复制到剪贴板
   - 新增 `enqueueNext()`：把下一阶段写入 `evolution-plan.json` next 队列（ID 去重，note 正常）
-  - 新增 `spawnClaudeContinuation()`：启动 `claude -p <prompt>` 新子会话，Windows 自动找 `%APPDATA%/npm/claude.cmd`
+  - 新增 `resolveNextFromSnapshot()`：无参数时自动读取 `latest_state.json` 的 `next_action` 或解析 summary 里的"下一步"
+  - 新增 `writeContinuePromptFile()` / `copyToClipboard()` / `openVsCodeNewWindow()`：VS Code 半自动接续基础设施
   - 修复 queue 调用参数：去掉多余的 `-n` 占位符，避免 note 被写成 `"-n"`
-- 更新 `.claude/commands/handoff.md`：加入 `--auto` 用法与典型场景
-- 更新 `scripts/orchestrator/test-handoff.js` **48/48 通过**（原 36 → 新增 12 项 M22 覆盖）
-  - 覆盖：`enqueueNext` 入队 / 重复入队 / note 不是 `-n` / `--auto` 参数解析 / `--auto --dry-run` 不入队 / `auto` + `spawnedClaude` 标记
-- 全量回归通过：bridge 45 + metrics 42 + graph-dispatch 35 + audit-loop 34 + handoff 48 = **204/204**
+- 更新 `.claude/commands/handoff.md`：加入 `--auto` 用法、无参数用法与典型场景
+- 更新 `scripts/orchestrator/test-handoff.js` **59/59 通过**（原 36 → 新增 23 项 M22 覆盖）
+  - 覆盖：`enqueueNext` 入队 / 重复入队 / note 不是 `-n` / `--auto` 参数解析 / `--auto --dry-run` 不入队 / `auto` + `spawnedClaude` 标记 / 无参数模式 / `resolveNextFromSnapshot` / `writeContinuePromptFile` / `copyToClipboard`
+- 全量回归通过：bridge 45 + metrics 42 + graph-dispatch 35 + audit-loop 34 + handoff 59 = **215/215**
 
 **L5 终极智能影响**：
-- 把"用户接续"从 3 步（/handoff → 复制 prompt → /clear 粘贴）压缩到 1 条命令
+- 把"用户接续"从 3 步（/handoff → 复制 prompt → /clear 粘贴）压缩到"一条命令 + 一次粘贴"
 - 与 `/autonomous` 机器接续共享 `evolution-plan.json` next 队列，人工/机器路径数据同源
 - 为"无人值守夜间开发 + 次日人工接管"提供最小可行工作流
 

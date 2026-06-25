@@ -95,6 +95,9 @@ scripts/orchestrator/workflow/.test-*/
 # 左脑孤儿目录（路径错乱时的空壳 sessions/，2026-06-25）
 .claude/skills/left-brain/scripts/memory/
 
+# handoff 临时接续 prompt（每次 --auto 运行时生成，不入库）
+.claude/handoff/
+
 # M15 评价闭环产物（v2.0.6）
 data/evolution/metrics-*.md 月度报告——保留入库（git 跟踪，跨会话趋势对比）
 

@@ -25,7 +25,7 @@ const path = require('path');
 const Metrics = require('./metrics');
 try { fs.unlinkSync(Metrics.METRICS_FILE); } catch { /* ok */ }
 
-const { handoff, buildHandoffPrompt, saveSnapshot, markAwaitingHandoff, clearAwaitingHandoff, loadAutonomousState, loadSnapshot } = require('./handoff');
+const { handoff, buildHandoffPrompt, saveSnapshot, markAwaitingHandoff, clearAwaitingHandoff, loadAutonomousState, loadSnapshot, resolveNextFromSnapshot, writeContinuePromptFile, copyToClipboard, CONTINUE_PROMPT_FILE, HANDOFF_DIR } = require('./handoff');
 
 let pass = 0, fail = 0;
 const fails = [];
@@ -46,7 +46,7 @@ const planBackup = fs.existsSync(evolutionPlanPath) ? fs.readFileSync(evolutionP
 function cleanupTestNextEntries() {
   if (!fs.existsSync(evolutionPlanPath)) return;
   const plan = JSON.parse(fs.readFileSync(evolutionPlanPath, 'utf8'));
-  const testIds = ['M22: 下一阶段', 'M22-TEST-NEXT', 'M22-CLI-NEXT', 'M22-dry-run-next'];
+  const testIds = ['M22: 下一阶段', 'M22-TEST-NEXT', 'M22-CLI-NEXT', 'M22-dry-run-next', 'M22-NOARGS-NEXT'];
   const before = plan.next.length;
   plan.next = plan.next.filter(x => !testIds.includes(x.id));
   if (plan.next.length !== before) {
@@ -163,26 +163,95 @@ console.log('\n── 7. 重复入队不重复 ──');
   check('重复入队返回 enqueued=false', result.enqueued === false, `got ${result.enqueued}`);
 }
 
-// ==================== 8. 错误兜底（缺 title） ====================
+// ==================== 8. 错误兜底（无 snapshot 且无 title） ====================
 console.log('\n── 8. 错误兜底 ──');
 
 {
+  // 临时破坏 snapshot，测试无参数且没有 next_action 时抛错
+  const snapBefore = fs.existsSync(snapshotPath) ? fs.readFileSync(snapshotPath, 'utf8') : null;
+  const emptySnap = { summary: '无下一步', next_action: null };
+  fs.writeFileSync(snapshotPath, JSON.stringify(emptySnap));
+
   let threw = false;
   try {
     handoff(null);
   } catch (e) {
     threw = true;
-    check('null title 抛错', e.message.includes('必须提供 title'));
+    check('无参数无 next_action 抛错', e.message.includes('无参数时'));
   }
-  check('null title 抛错', threw);
+  check('无参数无 next_action 抛错', threw);
 
   let threw2 = false;
   try {
     handoff('');
   } catch (e) {
     threw2 = true;
+    check('空字符串 title 且无 next 抛错', e.message.includes('无参数时'));
   }
-  check('空 title 抛错', threw2);
+  check('空字符串 title 抛错', threw2);
+
+  // 恢复
+  if (snapBefore !== null) fs.writeFileSync(snapshotPath, snapBefore);
+}
+
+// ==================== 8a. resolveNextFromSnapshot ====================
+console.log('\n── 8a. resolveNextFromSnapshot ──');
+
+{
+  const snapBefore = fs.existsSync(snapshotPath) ? fs.readFileSync(snapshotPath, 'utf8') : null;
+
+  fs.writeFileSync(snapshotPath, JSON.stringify({ next_action: 'M22-NOARGS-NEXT', summary: 'test' }));
+  const r1 = resolveNextFromSnapshot();
+  check('resolveNext 优先 next_action', r1.title === 'M22-NOARGS-NEXT');
+
+  fs.writeFileSync(snapshotPath, JSON.stringify({ summary: '完成 M22。\n\n下一步: M22-PARSE-NEXT' }));
+  const r2 = resolveNextFromSnapshot();
+  check('resolveNext 从 summary 解析"下一步:"', r2.title === 'M22-PARSE-NEXT');
+
+  fs.writeFileSync(snapshotPath, JSON.stringify({ summary: '完成 M22。' }));
+  const r3 = resolveNextFromSnapshot();
+  check('resolveNext 无匹配返回 null', r3 === null);
+
+  if (snapBefore !== null) fs.writeFileSync(snapshotPath, snapBefore);
+  else if (fs.existsSync(snapshotPath)) fs.unlinkSync(snapshotPath);
+}
+
+// ==================== 8b. 无参数 handoff() dry-run ====================
+console.log('\n── 8b. 无参数 handoff() ──');
+
+{
+  const snapBefore = fs.existsSync(snapshotPath) ? fs.readFileSync(snapshotPath, 'utf8') : null;
+  fs.writeFileSync(snapshotPath, JSON.stringify({ next_action: 'M22-NOARGS-NEXT', summary: 'test' }));
+
+  const result = handoff(null, { dryRun: true });
+  check('无参数 dry-run 返回 title', result.title === 'M22-NOARGS-NEXT');
+  check('无参数 dry-run prompt 含 next', result.prompt.includes('M22-NOARGS-NEXT'));
+
+  if (snapBefore !== null) fs.writeFileSync(snapshotPath, snapBefore);
+  else if (fs.existsSync(snapshotPath)) fs.unlinkSync(snapshotPath);
+}
+
+// ==================== 8c. writeContinuePromptFile ====================
+console.log('\n── 8c. writeContinuePromptFile ──');
+
+{
+  const promptFile = writeContinuePromptFile('测试 prompt 内容', 'M22-CONTINUE');
+  check('prompt 文件路径正确', promptFile === CONTINUE_PROMPT_FILE);
+  check('prompt 文件存在', fs.existsSync(promptFile));
+  const content = fs.readFileSync(promptFile, 'utf8');
+  check('prompt 文件含内容', content.includes('测试 prompt 内容'));
+  check('prompt 文件含标题', content.includes('M22-CONTINUE'));
+}
+
+// ==================== 8d. copyToClipboard ====================
+console.log('\n── 8d. copyToClipboard ──');
+
+{
+  // 不验证剪贴板内容（平台相关），只验证不抛错
+  let didNotThrow = true;
+  try { copyToClipboard('handoff-test-clipboard'); }
+  catch { didNotThrow = false; }
+  check('copyToClipboard 不抛错', didNotThrow);
 }
 
 // ==================== 9. 标签默认值 ====================
