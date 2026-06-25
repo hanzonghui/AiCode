@@ -22,7 +22,7 @@
  *   - ON 时带启用时间戳（便于追溯何时进入）
  *   - 永不 throw
  *
- * @since v2.1.0 (2026-06-25) — 增加 runner 入口（start/runner）
+ * @since v2.2.0 (2026-06-25) — 增加 single / always 两种模式
  * @source 03_版本迭代计划.md §五 v2.0 P0-1
  * @source .claude/memory/autonomous-mode.md
  */
@@ -45,6 +45,7 @@ const DEFAULT_STATE = {
   enabled_at: null,
   enabled_by: 'user',
   reason: null,
+  mode: 'always', // 'single' = 完成一个阶段后停止；'always' = 循环执行阶段
 };
 
 // ── 工具函数 ─────────────────────────────────────────
@@ -74,15 +75,19 @@ function saveState(state) {
 
 /**
  * 打开自主模式
- * @param {object} opts { reason, by }
+ * @param {object} opts { reason, by, mode }
  * @returns {object} 新状态
  */
 function enable(opts = {}) {
+  const current = loadState();
+  // 显式传入 mode > 当前已启用时的 mode > 之前保留的 mode > 默认 always
+  const mode = opts.mode || (current.enabled ? current.mode : (current.mode || 'always'));
   const state = {
     enabled: true,
     enabled_at: new Date().toISOString(),
     enabled_by: opts.by || 'user',
     reason: opts.reason || null,
+    mode,
   };
   saveState(state);
   return state;
@@ -93,11 +98,13 @@ function enable(opts = {}) {
  * @returns {object} 新状态
  */
 function disable() {
+  const current = loadState();
   const state = {
     enabled: false,
     enabled_at: null,
     enabled_by: 'user',
     reason: null,
+    mode: current.mode || 'always',
   };
   saveState(state);
   return state;
@@ -142,7 +149,8 @@ function formatStatusLine() {
   const s = loadState();
   if (s.enabled) {
     const when = s.enabled_at ? new Date(s.enabled_at).toLocaleString('zh-CN') : '未知';
-    return `🤖 自主模式: ON（开启于 ${when}）`;
+    const modeText = s.mode === 'single' ? 'single（单阶段）' : 'always（循环）';
+    return `🤖 自主模式: ON（${modeText}，开启于 ${when}）`;
   }
   return '🙋 正常模式: OFF（逐步确认）';
 }
@@ -167,11 +175,27 @@ if (require.main === module) {
         console.log('🙋 已切回正常模式（逐步确认）');
         break;
       }
+      case 'single': {
+        const state = enable({ reason, mode: 'single' });
+        console.log('🤖 自主模式已开启（single：完成一个阶段后自动停止）');
+        if (state.reason) console.log(`   原因: ${state.reason}`);
+        console.log(`   开启时间: ${state.enabled_at}`);
+        console.log('   提示: 执行 "node autonomous.js runner" 启动 runner');
+        break;
+      }
+      case 'always': {
+        const state = enable({ reason, mode: 'always' });
+        console.log('🤖 自主模式已开启（always：循环执行阶段）');
+        if (state.reason) console.log(`   原因: ${state.reason}`);
+        console.log(`   开启时间: ${state.enabled_at}`);
+        console.log('   提示: 执行 "node autonomous.js runner" 启动 runner');
+        break;
+      }
       case 'start': {
-        const s = enable({ reason });
-        console.log('🤖 自主模式已开启，启动 runner...');
-        if (s.reason) console.log(`   原因: ${s.reason}`);
-        console.log(`   开启时间: ${s.enabled_at}`);
+        const state = enable({ reason, mode: 'always' });
+        console.log('🤖 自主模式已开启（always：循环执行阶段）');
+        if (state.reason) console.log(`   原因: ${state.reason}`);
+        console.log(`   开启时间: ${state.enabled_at}`);
         // 启动 runner 循环（阻塞直到 runner 结束）
         const runnerPath = path.join(__dirname, 'autonomous-runner.js');
         const child = spawn('node', [runnerPath, 'run'], {
@@ -181,7 +205,6 @@ if (require.main === module) {
         child.on('exit', (code) => {
           process.exit(code);
         });
-        // 此处不 break，因为 spawn 是异步的，已经通过 child.on('exit') 控制退出
         return;
       }
       case 'runner': {
@@ -224,25 +247,37 @@ if (require.main === module) {
       }
       default: {
         console.log(`
-autonomous.js v2.1.0 — 自主演进模式开关 + runner 入口
+autonomous.js v2.2.0 — 自主演进模式开关 + runner 入口
 
 用法:
-  node autonomous.js on [reason]       # 开启自主模式（不启动 runner）
-  node autonomous.js off              # 关闭
-  node autonomous.js start [reason]   # 开启并启动 runner 循环
-  node autonomous.js runner           # 直接启动 runner（需已开启）
-  node autonomous.js toggle [reason]  # 切换
-  node autonomous.js status           # 查看状态
-  node autonomous.js is-enabled       # 机器读（exit 0=ON, 1=OFF）
+  node autonomous.js on [reason]             # 开启自主模式（不启动 runner，默认 always）
+  node autonomous.js off                     # 关闭
+  node autonomous.js single [reason]         # 开启 single 模式（完成一个阶段后自动停止）
+  node autonomous.js always [reason]         # 开启 always 模式（循环执行阶段）
+  node autonomous.js start [reason]          # 同 always + 立即启动 runner（向后兼容）
+  node autonomous.js runner                  # 直接启动 runner（按当前 mode 执行）
+  node autonomous.js toggle [reason]         # 切换
+  node autonomous.js status                  # 查看状态
+  node autonomous.js is-enabled              # 机器读（exit 0=ON, 1=OFF）
+
+启动命令（组合用法）:
+  node autonomous.js single [reason] && node autonomous.js runner
+  node autonomous.js always [reason] && node autonomous.js runner
 
 状态文件: .claude/skills/left-brain/memory/autonomous-state.json
 
-ON 时行为:
-  ✅ 自主选下一个增量开发
+single 模式:
+  ✅ 自动选下一个增量开发
+  ✅ 完成一个阶段后自动停止并关闭开关
+
+always 模式:
+  ✅ 自动选下一个增量开发
+  ✅ 完成后自动开启新阶段循环执行
+
+公共行为:
   ✅ 关键决策写入快照不询问
   ✅ 完成后自动 commit（安全时）
   ✅ session-init 顶部显示 🤖
-  ✅ runner 自动循环执行阶段
 
 OFF 时行为（默认）:
   🙋 每完成一个功能 → 询问

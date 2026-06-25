@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 /**
- * autonomous-runner.js — 自主模式无人值守执行器（v2.0 P0-1 增强）
+ * autonomous-runner.js — 自主模式无人值守执行器（v2.2.0）
  *
  * 核心能力：
  *   - 阶段完成后自动保存快照
  *   - 退出当前 claude -p 子会话
  *   - 启动新的 claude -p 子会话加载快照并继续下一阶段
  *   - 完全无人值守循环执行
+ *   - 支持 single 模式：完成一个阶段后自动停止
+ *   - 支持 always 模式：循环执行阶段
  *
  * 触发位置：
- *   - /autonomous 开启自主模式后，由 autonomous.js start 调用
+ *   - /autonomous single 或 /autonomous always 调用
  *   - 手动：node scripts/orchestrator/autonomous-runner.js run
  *
  * 状态文件：
@@ -17,12 +19,12 @@
  *   - .claude/skills/left-brain/memory/sessions/latest_state.json
  *
  * 用法：
- *   node autonomous-runner.js run              # 启动 runner 循环
+ *   node autonomous-runner.js run              # 启动 runner（按 state.mode 决定 single/always）
  *   node autonomous-runner.js stop             # 停止 runner（写 enabled=false）
  *   node autonomous-runner.js status           # 查看 runner 状态
  *   node autonomous-runner.js complete-stage   # 子进程调用：标记当前阶段完成
  *
- * @since v2.0.1 (2026-06-25)
+ * @since v2.2.0 (2026-06-25) — 增加 single / always 模式支持
  * @source 03_版本迭代计划.md §五 v2.0 P0-1
  * @source .claude/memory/autonomous-mode.md
  */
@@ -295,6 +297,13 @@ async function runLoop() {
     if (result.code === 0 && stage && stage.status === 'completed') {
       log('INFO', `阶段完成: ${nextStage}`);
       // failure_count 已在 complete-stage 中清零
+
+      // single 模式：完成一个阶段后自动停止
+      if (autoState.mode === 'single') {
+        log('INFO', 'single 模式：完成一个阶段，自动停止自主模式');
+        disableAutonomous('single 模式完成一个阶段后自动停止');
+        break;
+      }
     } else {
       const reason = stage?.last_error || `子进程退出 code=${result.code}`;
       const failures = markStageFailed(loadSnapshot(), reason);
@@ -345,6 +354,8 @@ async function main() {
           log('INFO', '自主模式当前为 OFF，请先执行 /autonomous 或 node autonomous.js on');
           process.exit(1);
         }
+        const modeText = state.mode === 'single' ? 'single（完成一个阶段后停止）' : 'always（循环）';
+        log('INFO', `runner 启动，模式: ${modeText}`);
         await runLoop();
         break;
       }
@@ -364,8 +375,12 @@ async function main() {
         const stage = snapshot?.stage;
         console.log('━'.repeat(50));
         console.log(`🤖 自主模式: ${autoState.enabled ? 'ON' : 'OFF'}`);
-        if (autoState.enabled && autoState.reason) {
-          console.log(`   原因: ${autoState.reason}`);
+        if (autoState.enabled) {
+          const modeText = autoState.mode === 'single' ? 'single（单阶段）' : 'always（循环）';
+          console.log(`   模式: ${modeText}`);
+          if (autoState.reason) {
+            console.log(`   原因: ${autoState.reason}`);
+          }
         }
         if (stage) {
           console.log(`🎯 当前阶段: ${stage.current || '(无)'}`);

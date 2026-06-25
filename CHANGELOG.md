@@ -64,6 +64,27 @@
 
 - `session-init.sh` 新增 Step 7（二次采样队列）和 Step 8（cron 报告），新会话启动时自动展示
 
+### 🤖 Added - 自主模式 single / always 双模式（v2.2.0）
+
+**背景**：原 `/autonomous` 只有一个"无限 runner"行为，用户需要更灵活的控制：有时只让 Claude 完成当前一个阶段就停，有时才让它循环执行阶段。
+
+- 状态文件 `autonomous-state.json` 新增 `mode` 字段：`'single' | 'always'`
+- `scripts/orchestrator/autonomous.js` v2.1.0 → v2.2.0
+  - 新增 CLI 子命令：`single [reason]`、`always [reason]`
+  - `on` 默认 mode=`always`（向后兼容）
+  - `start` 保持 `always + runner` 行为（向后兼容）
+  - `toggle` 关闭后保留 mode，再开启时恢复
+  - `formatStatusLine()` 显示当前 mode
+- `scripts/orchestrator/autonomous-runner.js` v2.0.1 → v2.2.0
+  - `runLoop()` 在 single 模式下完成一个阶段后自动 `disableAutonomous` 并退出
+  - `status` 输出显示当前 mode
+  - `run` 启动日志显示当前 mode
+- `package.json` 新增 npm scripts：
+  - `autonomous:single` = `single && runner`
+  - `autonomous:always` = `always && runner`
+- 更新 `.claude/commands/autonomous.md`：说明 single / always 用法与行为对比
+- 测试：`test-autonomous.js` 62/62 通过；`test-autonomous-runner.js` 6/6 通过
+
 ### 🎯 Changed - M10：任务复杂度评分驱动 Agent 数量（dispatcher.js v2.5.1）
 
 **背景**：M9 给出 0-10 复杂度评分和三档阈值，但 `decide()` 多个路径仍固定派 2 个 Agent，没有把评分转化为调度粒度。

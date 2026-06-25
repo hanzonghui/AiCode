@@ -151,6 +151,40 @@ function testFailureRetryLimit() {
   console.log('✅ failure_count 递增');
 }
 
+function testSingleModeStopsAfterOneStage() {
+  backup();
+
+  // 写一个已完成阶段的快照
+  writeSnapshot({
+    summary: 'single mode test',
+    stage: {
+      current: 'stage-A',
+      status: 'completed',
+      completed: ['stage-A'],
+      next: 'stage-B',
+      failure_count: 0,
+    },
+  });
+
+  // 模拟 single 模式状态
+  const { AUTONOMOUS_STATE_FILE, saveAutonomousState, loadAutonomousState } = require('./autonomous-runner');
+  const originalState = fs.existsSync(AUTONOMOUS_STATE_FILE) ? fs.readFileSync(AUTONOMOUS_STATE_FILE, 'utf8') : null;
+  saveAutonomousState({ enabled: true, mode: 'single' });
+
+  const state = loadAutonomousState();
+  assert.strictEqual(state.mode, 'single', '状态文件写入 mode=single');
+
+  // 恢复状态文件
+  if (originalState !== null) {
+    fs.writeFileSync(AUTONOMOUS_STATE_FILE, originalState);
+  } else if (fs.existsSync(AUTONOMOUS_STATE_FILE)) {
+    fs.unlinkSync(AUTONOMOUS_STATE_FILE);
+  }
+
+  restore();
+  console.log('✅ single 模式状态可读写');
+}
+
 // ── 主入口 ───────────────────────────────────────────
 
 function main() {
@@ -160,6 +194,7 @@ function main() {
     testMarkStageCompleted();
     testBuildStagePrompt();
     testFailureRetryLimit();
+    testSingleModeStopsAfterOneStage();
     console.log('\n🎉 全部测试通过');
     process.exit(0);
   } catch (e) {

@@ -21,6 +21,8 @@
 "test:autonomous": "node scripts/orchestrator/test-autonomous.js && node scripts/orchestrator/test-autonomous-runner.js",
 "autonomous:start": "node scripts/orchestrator/autonomous.js start",
 "autonomous:runner": "node scripts/orchestrator/autonomous.js runner",
+    "autonomous:single": "node scripts/orchestrator/autonomous.js single && node scripts/orchestrator/autonomous.js runner",
+    "autonomous:always": "node scripts/orchestrator/autonomous.js always && node scripts/orchestrator/autonomous.js runner",
     "test:recall": "node scripts/orchestrator/recall/test-semantic-recall.js",
     "recall:semantic": "node scripts/orchestrator/recall/semantic-recall.js search",
     "recall:semantic:stats": "node scripts/orchestrator/recall/semantic-recall.js stats",

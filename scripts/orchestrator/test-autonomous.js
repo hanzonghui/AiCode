@@ -59,6 +59,7 @@ section('enable');
   assert(typeof s.enabled_at === 'string', 'enable 写入 enabled_at');
   assert(s.reason === 'test reason', 'reason 写入');
   assert(s.enabled_by === 'user', '默认 enabled_by=user');
+  assert(s.mode === 'always', '默认 mode=always');
 }
 
 // 状态文件持久化
@@ -66,6 +67,27 @@ section('enable');
   const s = loadState();
   assert(s.enabled === true, 'loadState 读出 enabled=true');
   assert(s.reason === 'test reason', 'loadState 读出 reason');
+  assert(s.mode === 'always', 'loadState 读出 mode=always');
+}
+
+// mode 参数
+{
+  const s = enable({ mode: 'single' });
+  assert(s.mode === 'single', 'enable 可指定 mode=single');
+  assert(loadState().mode === 'single', 'mode 持久化到状态文件');
+  disable();
+  assert(loadState().mode === 'single', 'disable 后保留上次的 mode');
+}
+
+// toggle 恢复 mode
+{
+  const r1 = toggle();
+  assert(r1.action === 'on', 'toggle → on');
+  assert(r1.state.mode === 'single', 'toggle on 恢复之前的 mode');
+  const r2 = toggle();
+  assert(r2.action === 'off', 'toggle → off');
+  assert(r2.state.mode === 'single', 'toggle off 保留 mode');
+  clearState();
 }
 
 // ==================== 3. disable ====================
@@ -132,6 +154,15 @@ section('formatStatusLine');
   assert(s.includes('自主模式') || s.includes('🤖'), 'ON 状态显示自主模式', s);
   assert(s.includes('ON'), 'ON 状态包含 ON', s);
   assert(s.includes('开启于'), 'ON 状态显示开启时间', s);
+  assert(s.includes('always（循环）'), 'ON 状态显示 always 模式', s);
+  disable();
+}
+
+{
+  enable({ mode: 'single', reason: 'demo-single' });
+  const s = formatStatusLine();
+  assert(s.includes('single（单阶段）'), 'ON 状态显示 single 模式', s);
+  disable();
 }
 
 disable();
@@ -179,11 +210,32 @@ clearState();
   assert(out.includes('OFF') || out.includes('正常模式'), 'status 命令显示当前状态');
 }
 
+// single
+{
+  const out = execFileSync('node', ['autonomous.js', 'single', 'test-single'], { cwd: __dirname, encoding: 'utf8', stdio: 'pipe' });
+  assert(out.includes('single'), 'single 命令输出包含 single');
+  assert(out.includes('完成一个阶段后自动停止'), 'single 命令输出说明行为');
+  assert(isEnabled() === true, 'single 后状态为 ON');
+  assert(loadState().mode === 'single', 'single 命令写入 mode=single');
+  disable();
+}
+
+// always
+{
+  const out = execFileSync('node', ['autonomous.js', 'always', 'test-always'], { cwd: __dirname, encoding: 'utf8', stdio: 'pipe' });
+  assert(out.includes('always'), 'always 命令输出包含 always');
+  assert(out.includes('循环执行阶段'), 'always 命令输出说明行为');
+  assert(isEnabled() === true, 'always 后状态为 ON');
+  assert(loadState().mode === 'always', 'always 命令写入 mode=always');
+  disable();
+}
+
 // on
 {
   const out = execFileSync('node', ['autonomous.js', 'on', 'test-cli'], { cwd: __dirname, encoding: 'utf8', stdio: 'pipe' });
   assert(out.includes('已开启'), 'on 命令输出确认');
   assert(isEnabled() === true, 'on 后状态为 ON');
+  assert(loadState().mode === 'always', 'on 命令默认 mode=always');
 }
 
 // off
@@ -225,8 +277,9 @@ clearState();
 // 帮助
 {
   const out = execFileSync('node', ['autonomous.js', 'help'], { cwd: __dirname, encoding: 'utf8', stdio: 'pipe' });
-  assert(out.includes('autonomous.js v2.1.0'), 'help 显示版本');
-  assert(out.includes('on') && out.includes('off'), 'help 列出子命令');
+  assert(out.includes('autonomous.js v2.2.0'), 'help 显示版本 v2.2.0');
+  assert(out.includes('single'), 'help 列出 single');
+  assert(out.includes('always'), 'help 列出 always');
 }
 
 // ==================== 9. 永不 throw ====================
