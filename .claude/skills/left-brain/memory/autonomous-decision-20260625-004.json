@@ -1,0 +1,19 @@
+{
+  "id": "autonomous-decision-20260625-004",
+  "ts": "2026-06-25T08:23:04.000Z",
+  "mode": "single",
+  "stage": "next: 跑 /audit 看是否还有 P0 问题",
+  "outcome": "partial",
+  "fix_1_validated": "✅ spawn ENOENT 修复有效 — bin 正确解析到 %APPDATA%\\npm\\claude.cmd，子会话真启动且 code=0",
+  "fix_2_discovered": "🐛 BUG #2: 子会话不调 complete-stage — 子进程退出 code=0 但 stage.status 仍 in_progress，runner 判定失败。根因：buildStagePrompt 设计不严，子会话把 prompt 误读为'半句话用户消息'走 SessionStart 启动协议",
+  "next_decision_options": [
+    "A. 修 BUG #2：buildStagePrompt 加 ⚠️ 强制指令（最小改动）",
+    "B. 改造为 hook-driven：runner 不依赖子会话自觉",
+    "C. 妥协：runner 检测 code=0 但 stage 未完成 → 自动 mark completed",
+    "D. 先收工，今天到此为止（KB-007 + 决策记录已存）"
+  ],
+  "snapshot_ref": "20260625-162304",
+  "files_to_change_option_A": ["scripts/orchestrator/autonomous-runner.js"],
+  "priority": "P1（阻塞 autonomous 模式可用性）",
+  "user_decision_pending": true
+}
