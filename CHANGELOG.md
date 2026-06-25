@@ -66,6 +66,29 @@
 
 ---
 
+## [Unreleased] - self-discipline 强化：动作 0（commit 前自动存快照）
+
+### 🔧 Changed - 决策树加"动作 0"，杜绝"4 commit 1 快照"
+
+**背景**：2026-06-25 上午发现 — 4 个 commit（04 真实化 / doc-sync 串联 / 01-02 补全 / B 方案正交化）只补了 1 个快照。根因：milestone 模式按"完成/里程碑/交付"标签触发，docs/refactor 类型 commit 不带这些关键词会全跳过；而 self-discipline 决策树里"快照"是可选项不是必选项。
+
+**调整**：
+- `.claude/rules/self-discipline.md` — 表格里 🟡 / 🔴 / 🏁 三行加"**0 先存快照**"前缀；顶部加 2026-06-25 强化说明
+- `scripts/orchestrator/自我约束规范.md` — 动作编号表新增 `0`：`commit 前自动存快照`；"何时存快照"段补频率（1 commit 1 快照）
+- 决策树从"测试 → 快照 → KB"改为"快照 → 测试 → KB"（快照先于测试，因测试可能改文件，先存能保留改动前状态）
+
+**影响**：🟡 / 🔴 / 🏁 任何 commit 前**必须**先跑 `session-summary.sh save`，不再依赖标签自动触发。
+
+### Files
+- 修改：`.claude/rules/self-discipline.md`
+- 修改：`scripts/orchestrator/自我约束规范.md`
+
+### 关联
+- 命中 self-discipline 决策树
+- 与 doc-sync 规则（动作 4a）并列，组成"🔴 大级别双强制"
+
+---
+
 ## [Unreleased] - 3 文件职责正交化（B 方案）+ /audit 能力补全
 
 ### 🔧 Refactor - CLAUDE.md / 01 / 02 三个文件职责正交化
