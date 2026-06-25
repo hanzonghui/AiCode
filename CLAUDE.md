@@ -148,6 +148,70 @@ AiCode/
 
 ---
 
+## 🤝 会话交接助手（v3.0.4 M21 · 用户接续 vs 机器接续）
+
+> **场景**：上下文超长想 `/clear` 切换新会话 / 深夜编程次日继续 / 想换 Claude Code 窗口。
+> **答**：`/handoff` 命令自动存快照 + 生成 4 段接续 prompt，你粘到新会话第一句即可接续。
+> **不破坏**：`/autonomous`（机器接续）/ `/snap-save`（纯存档）/ `/clear` / `/compact`（内建）。
+
+### 3 种"接续"路径对比
+
+| 路径 | 谁接续 | 何时用 | 命令 |
+|:-----|:-------|:------|:-----|
+| **用户接续** | 你自己 | 现在收尾，下次自己继续 | `/handoff "标题" "下一阶段"` |
+| **机器接续** | autonomous-runner | 离开几小时让 runner 循环跑 | `/autonomous always` + `npm run autonomous:runner` |
+| **纯存档** | （不接续）| 仅保存，不继续 | `/snap-save "标题" "milestone-X"` |
+
+### `/handoff` 用法（最常用）
+
+```bash
+# 实际执行：存快照 + 标 awaiting_handoff + 输出 4 段接续 prompt
+node scripts/orchestrator/handoff.js "当前标题" "下一阶段标题"
+
+# 预览（不真写，看 prompt 再决定）
+node scripts/orchestrator/handoff.js "当前标题" --dry-run
+```
+
+### 完整流程
+
+```
+当前会话（你正在看的）
+  ↓ /handoff "今天完成 M21" "M20: decision-assistant.js"
+  ↓
+✅ 自动存快照（.claude/skills/left-brain/memory/sessions/latest_state.json）
+✅ 标 awaiting_handoff=true
+✅ 输出 4 段接续 prompt（30+ 行 markdown）
+  ↓
+复制 prompt
+  ↓
+Claude Code → New Chat（或输入 /clear）
+  ↓
+新会话第一句：粘 prompt
+  ↓
+session-init.sh 自动加载 latest_state.json
+  ↓
+继续干活
+```
+
+### 4 段接续 prompt 拼装（自动）
+
+```
+1. 会话摘要（来自 latest_state.json.summary）
+2. 待办列表（来自 latest_state.json.pending_todos）
+3. 下一阶段目标（用户传入）
+4. 当前状态与约束（自主模式 / 锁 / 关键约束）
+```
+
+### 关联
+
+- 完整命令定义：`.claude/commands/handoff.md`
+- 核心引擎：`scripts/orchestrator/handoff.js`
+- 测试：`scripts/orchestrator/test-handoff.js`（36/36 通过）
+- 复用：`session-summary.sh save --force`（v1.8）+ `autonomous-state.json` schema（v2.2.0）
+- 与 M16/M19 无关（独立的"用户接续"工具，与"机器接续"互补）
+
+---
+
 ## 🎯 演进计划的功能怎么来的（外层摘要 · 完整版见 `04_自我演进路线.md` §0.7）
 
 > **用户最常问 3 个问题**：
