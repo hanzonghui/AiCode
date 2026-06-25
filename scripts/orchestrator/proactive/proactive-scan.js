@@ -435,6 +435,18 @@ if (require.main === module) {
       if (!result.cached) {
         ensureDir(MEMORY_DIR);
         fs.writeFileSync(ANOMALY_FILE, JSON.stringify(result.summary, null, 2));
+
+        // M13：anomaly 写入后自动触发失败蒸馏器（零成本 heuristic 默认，不阻塞主流程）
+        try {
+          const distillerPath = path.join(WORKSPACE_ROOT, 'scripts', 'orchestrator', 'learning', 'distiller.js');
+          if (fs.existsSync(distillerPath)) {
+            require(distillerPath).distillAll().then(d => {
+              if (d.reusable > 0) {
+                process.stderr.write(`[M13] 蒸馏完成: ${d.reusable} 条可复用经验已写入 KB\n`);
+              }
+            }).catch(() => { /* 蒸馏失败不阻塞 */ });
+          }
+        } catch { /* 永不阻塞 proactive-scan */ }
       }
     } else if (cmd === 'list') {
       // 读上次扫描结果

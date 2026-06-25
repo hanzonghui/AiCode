@@ -21,6 +21,15 @@
 - v3.0.0 重新定义 = M13+M14+M15 三个子闭环（失败 / 复用 / 评价）
 - L5 达成条件补全 5 条：M13~M15 ✅ + 失败蒸馏率 ≥ 80% + 知识命中率 ≥ 30% + 月度 metric 持续 3 个月 + 自治覆盖率/人工干预率趋势
 
+### Added - 阶段 3：M13 失败蒸馏器启动（已完成）
+- 新增 `scripts/orchestrator/learning/distiller.js` — anomaly → KB 自动蒸馏
+- 接入 `proactive-scan.js`：扫描写入 anomalies.json 后自动触发蒸馏（不阻塞主流程）
+- 默认 HeuristicAdapter（零成本），可选 `--llm` 复核
+- 输出：可复用经验写入 KB + MEMORY.md 索引；一次性事故写入 distillation-log.jsonl
+- 新增 npm scripts：`distill` / `distill:status` / `distill:history` / `test:distiller`
+- 测试 `scripts/orchestrator/learning/test-distiller.js` 5/5 通过
+- 同步 `04_自我演进路线.md`：M13 状态 ✅，L4 持续进化状态 ✅，L5 终极智能 🟡
+
 ---
 
 ## [v2.0.4] - 2026-06-25
