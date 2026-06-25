@@ -43,8 +43,9 @@ AiCode/
 │
 ├── scripts/                           ← 核心自动化脚本
 │   ├── evolution/                     ← 🧬 自我进化系统（v1.8：每日扫描 GitHub 学习新能力）
-│   ├── orchestrator/                  ← 智能调度器（v1.9：+ metrics + logger + permissions + withRetry；v2.5.1：M10 复杂度评分驱动 Agent 数量）
+│   ├── orchestrator/                  ← 智能调度器（v1.9：+ metrics + logger + permissions + withRetry；v2.5.1：M10 复杂度评分驱动 Agent 数量；v2.0.2：+ audit 子系统）
 │   │   ├── workflow/                  ← 🧠 个人 workflow 智能化（v2.0 P0-5：学习工作模式，主动建议下一步）
+│   │   ├── audit/                     ← 🔍 工程自查/审计（v2.0.2 P0-6：6 段浅层报告引擎 + /audit 命令）
 │   ├── parallel/                      ← worktree 并行
 │   ├── mcp/                           ← 本地 MCP server（v1.9：+ _shared 统一错误）
 │   └── 会话快照/                       ← 快照保存/加载
@@ -122,30 +123,26 @@ AiCode/
 
 ## 快速操作
 
-| 操作 | 命令 |
+> 📋 **本节已迁出为"导航链接"——完整快速操作表是 `01_AI-ClaudeCode-最佳实践精简.md` §三（用户速查主表）**
+>
+> 用户问"我该用什么命令"→ 查 01 §三
+>
+> AI 实现细节（每个能力怎么写）→ 查 `02_工作空间功能介绍.md` §二
+
+### 本节只保留 3 项最高频导航
+
+| 操作 | 入口 |
 |:-----|:-----|
-| 新建项目 | `/new-project` |
-| 记忆知识 | `left-brain.sh remember "..."` |
-| 搜索知识 | `left-brain.sh recall "关键词"` |
-| 查看状态 | `left-brain.sh dashboard` |
-| 自我进化 | `/evolve run` 或 `npm run evolve` |
-| 检查过时 | `/evolve watch` 或 `npm run trend` |
-| **二次采样队列** | `/secondary-review status` 查看高风险改动复查队列 |
-| **cron 主动报告** | `npm run cron:report:daily` / `weekly` / `status` |
-| **自动修复** | `/autofix` 或 `node scripts/orchestrator/proactive/auto-fix.js [--llm]` |
-| **个人 workflow 建议** | `/workflow` 查看下一步建议，`/workflow learn` 重新学习模式 |
-| **GitHub 搜索** | `gh search repos "关键词" --limit 5` |
-| **B站搜索** | `bili search "关键词" -n 5` |
-| **任意网页** | `curl -s "https://r.jina.ai/URL"` |
-| 压缩上下文 | `/compact` |
-| 重置会话 | `/clear` |
-| **切快照模式** | `/snap-mode off\|manual\|milestone\|auto\|reset` |
-| **强制存快照** | `/snap-save "标题" "标签"` |
-| **自主模式 single** | `/autonomous single`（完成一个阶段后自动停止） |
-| **自主模式 always** | `/autonomous always`（循环执行阶段） |
-| **自主模式 OFF** | `/autonomous-stop` 或 `npm run autonomous:off`（回到正常模式） |
-| **启动自主 runner** | `npm run autonomous:single "原因"` / `npm run autonomous:always "原因"` / `npm run autonomous:runner`（已 ON 时启动） |
-| **文档漂移检查** | `npm run doc:check` 或扫 04.md 是否还写"计划中" |
+| **AI 启动协议** | 见上方"启动协议"段（CLAUDE.md 必读） |
+| **用户命令速查** | 01_AI-ClaudeCode-最佳实践精简.md §三 |
+| **能力详细说明** | 02_工作空间功能介绍.md §二（按 2.X 节） |
+
+> **2026-06-25 调整（B 方案）**：3 文件职责正交化——
+> - **CLAUDE.md** = 启动导航（启动协议 / 工作空间结构 / 规则文件清单 / 核心定位）
+> - **01_AI-ClaudeCode-最佳实践精简.md** = 用户速查主表（核心原则 / 快速操作 / 能力速查）
+> - **02_工作空间功能介绍.md** = 完整说明字典（每能力一节 + 实现 + 用法 + 测试）
+>
+> 改一处只动一处，doc-sync 规则同步更精准（"用户可见" 在 01、"实现细节" 在 02、"导航" 在 CLAUDE.md）。
 
 ---
 

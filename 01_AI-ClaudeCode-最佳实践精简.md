@@ -1,8 +1,12 @@
 # AI 最佳实践与行为约定
 
+> **本文件是"用户速查主表"**（2026-06-25 调整：B 方案正交化）
+> - 完整功能说明见 `02_工作空间功能介绍.md`（字典）
+> - AI 启动导航见 `CLAUDE.md`（CLAUDE.md 启动协议 / 工作空间结构 / 规则文件清单）
+> - 改动收尾规则见 `.claude/rules/doc-sync.md`（🔴 大 / 🏁 级别强制同步 4 文档 + CHANGELOG）
+>
 > 工作空间通用行为标准。所有 AI 助手和人类开发者共同遵守。
-> 完整功能说明见 `02_工作空间功能介绍.md`，操作细节见各脚本文档。
-> 最后更新：2026-06-25（v2.6.0：补 4 个能力 — 二次采样验证 / cron 主动报告 / LLM 辅助 auto-fix / 个人 workflow 智能化；M10 评分驱动 Agent 数量已闭环）
+> 最后更新：2026-06-25（v2.6.0：补 4 个能力 — 二次采样验证 / cron 主动报告 / LLM 辅助 auto-fix / 个人 workflow 智能化；M10 评分驱动 Agent 数量已闭环；新增 /audit 工程自查）
 
 ---
 
@@ -115,6 +119,7 @@
 | **二次采样验证** | `/secondary-review status` / `approve <id>` / `reject <id>` | 复查高风险改动（核心文件 / 根级配置 / 规则文件）队列 |
 | **cron 主动报告** | `npm run cron:report:daily` / `weekly` / `status` | 后台定时日报（9:37）+ 周报（周一 9:42），无人值守期间主动汇报 |
 | **工作流建议** | `/workflow` / `/workflow learn` / `/workflow status` | session-init Step 9 自动展示"接下来该做什么" |
+| **工程自查/审计** | `/audit` 或 `npm run audit` | 6 段浅层报告（工程画像/已完成/未完成/缺口/重复/建议），可一键整合到 04 backlog（详见 02 §2.25） |
 | **切到后台** | `Ctrl+B` | 把当前命令放到后台跑 |
 | **看后台任务** | `/tasks` | 列所有后台运行的任务 |
 
@@ -180,6 +185,7 @@
 | **任务复杂度评分** | `dispatcher.js` v2.5.0+ | `scoreComplexity()` 0-10 数字 + 三档阈值（<4 不派 / 4-7 灰区 / >7 派），M10 接入 Agent 数量（1-3） |
 | **自主演进模式** | `/autonomous single\|always` | single 完成一个阶段后停，always 循环；5 道安全闸门 + 5 次失败上限，62+6 测试 |
 | **个人 workflow 智能化** | `scripts/orchestrator/workflow/*.js` | observer / pattern-miner / suggestion-engine 三层架构，`/workflow` 主动建议 |
+| **工程自查/审计** | `scripts/orchestrator/audit/quick-audit.js` | 6 个扫描器（profile / completed / unfinished / gaps / duplicates / suggestions），9/9 测试 |
 
 ---
 
@@ -331,6 +337,7 @@ echo '{"tool_name":"UserPromptSubmit","tool_input":{"prompt":"排查 BUG"}}' | n
 | 增量 H 个人 workflow 智能化（M11 v2.6.0） | H | ✅ |
 | M9 任务复杂度评分（v2.5.0） | M9 | ✅ |
 | M10 评分驱动 Agent 数量（v2.5.1） | M10 | ✅ |
+| M16 工程自查/审计 /audit（v2.0.2） | M16 | ✅ |
 | M12 LLM-judge 闸门 / M13 失败蒸馏器 / M14 知识图谱反哺 / M15 效果指标 | M12~M15 | ⏳ v3.0.0 规划中 |
 
 > 🚨 **2026-06-25 真实化**：执行层 A~H + M9/M10 全部 ✅，L4 自主"学习" 4 个缺口（LLM-judge / 失败蒸馏 / 知识图谱反哺 / 效果 metric）明确为 v3.0.0 路线（M12~M15）。详见 `04_自我演进路线.md` §0.4。

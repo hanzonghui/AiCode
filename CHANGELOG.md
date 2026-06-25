@@ -29,16 +29,19 @@
   - **永不 throw**（任何扫描失败 → 返回空数组）
   - **不写任何代码文件**（只读 + 写 `.claude/audits/` 和 04.md backlog）
   - 浅层 < 5K tokens / 深度 < 50K tokens
-- **深度引擎预留** `scripts/orchestrator/audit/full-audit.js`（SKILL.md 已声明,P1 待实现）
-- **CLI**：`run / json / history`
-- **npm scripts**：`audit / audit:json / audit:history / test:audit`,加入主 `test` 链
+- **深度引擎** `scripts/orchestrator/audit/full-audit.js`（v2.0.2 已实现）
+  - 9 个子系统任务清单（dispatcher / reflection / proactive / evolution / planning / workflow / left-brain / recall / autonomous）
+  - 生成 JSON 任务清单（每个含 promptTemplate 给 Claude Code runtime 用 Agent tool 派 explorer 子代理）
+  - `aggregateResults` 汇总多 Agent 结果，P0/P1/P2 排序（用 `??` 避免 `0 || 99` 的 falsy 坑）
+  - CLI：`tasks / json / help`
+- **npm scripts**：`audit / audit:json / audit:history / audit:full / audit:full:json / test:audit`,加入主 `test` 链
 - **package.json**：`2.0.1 → 2.0.2`
-- **测试**：`scripts/orchestrator/audit/test-quick-audit.js` **9/9 通过**
+- **测试**：`scripts/orchestrator/audit/test-quick-audit.js` **9/9 通过** + `scripts/orchestrator/audit/test-full-audit.js` **9/9 通过**
 
-**自检验证**（首次跑 `/audit` 就发现 3 个真问题）：
-- ⚠️ P0-1: audit SKILL.md 引用 `scripts/orchestrator/audit/full-audit.js` 但文件未建（深度模式缺失）
-- ⚠️ 重复-1: `package.json` line 8 和 line 66 都定义了 `"test:evolution"`,后定义的覆盖前面的（值不同）
-- 🟡 P2-1: 当前仅 2 个 skill,建议把高频能力包装为 skill
+**自检验证**（首次跑 `/audit` 发现并修复 2 个真问题）：
+- ⚠️ P0-1: audit SKILL.md 引用 `scripts/orchestrator/audit/full-audit.js` 但文件未建（深度模式缺失）→ **已修复,新建 full-audit.js（9 子系统任务清单 + aggregateResults）**
+- ⚠️ P0-2: `package.json` line 8 和 line 70 都定义了 `"test:evolution"`,后定义的覆盖前面的（值不同,少一个测试）→ **已修复,删除 line 70 重复定义,保留 line 8 完整 3 测试版本**
+- 🟡 P2-1: 当前仅 2 个 skill,建议把高频能力包装为 skill（远期,留作未来 backlog）
 
 **与其他命令的边界**：
 - `/autofix` 修**当下**技术债 — `/audit` 找**长期**方向缺口
@@ -49,15 +52,65 @@
 ### Files
 - 新增：`.claude/skills/audit/SKILL.md`
 - 新增：`.claude/commands/audit.md`
-- 新增：`scripts/orchestrator/audit/quick-audit.js` (~400 行)
+- 新增：`scripts/orchestrator/audit/quick-audit.js` (~410 行)
+- 新增：`scripts/orchestrator/audit/full-audit.js` (~230 行)
 - 新增：`scripts/orchestrator/audit/test-quick-audit.js` (~120 行,9/9 通过)
-- 修改：`package.json`（version 2.0.1 → 2.0.2,新增 4 个 npm script,test 链追加 test:audit）
+- 新增：`scripts/orchestrator/audit/test-full-audit.js` (~110 行,9/9 通过)
+- 修改：`package.json`（version 2.0.1 → 2.0.2,新增 6 个 npm script,test 链追加 test-quick-audit + test-full-audit,删除重复 test:evolution）
 - 修改：`04_自我演进路线.md`（新增 P0-6 增量段 + M16 里程碑 + 顶部同步日期）
 
 ### 关联
 - 命中 04 文档 §0.4 增量（v2.0.2 新增 P0-6 工程审计）
 - 关联 04 文档 §12 里程碑 M16
 - 符合"最高指令"：让 Claude 能自己"重新评价工程"→ 帮 Claude 变智能（L4/L5 路线必备）
+
+---
+
+## [Unreleased] - 3 文件职责正交化（B 方案）+ /audit 能力补全
+
+### 🔧 Refactor - CLAUDE.md / 01 / 02 三个文件职责正交化
+
+**背景**：2026-06-25 用户评价——根据文件名用户会习惯性看 01 + 02，希望两个文件"包含全部核心功能说明"。但现状是 3 个文件（CLAUDE.md / 01 / 02）都有"快速操作"表，**职责重叠、互相不同步、可能各写各的**。
+
+**调整**（B 方案，3 文件职责清晰）：
+- **CLAUDE.md** = 启动导航（启动协议 / 工作空间结构 / 规则文件清单 / 核心定位）
+  - "快速操作"段改为"导航链接"——完整表迁到 01
+- **01_AI-ClaudeCode-最佳实践精简.md** = 用户速查主表（核心原则 / 快速操作 / 能力速查）
+  - 顶部加"职责定位"段，明确"用户命令速查主表"身份
+  - 引用 02 作为"详细说明"、引用 doc-sync 作为"改动收尾规则"
+- **02_工作空间功能介绍.md** = 完整说明字典（每能力一节 + 实现 + 用法 + 测试）
+  - 主体不动
+
+**为什么走 B 不走 A/C/D**：
+- A（加交叉引用）：3 处表都过时风险，比现在 1 处更差
+- C（合并 01+02）：违反 SRP，让 doc-sync 新规则失效
+- D（02 归档）：给"详细"内容贴"归档"标签是反信号
+- B 胜在：3 文件正交、改一处不影响他处、与 doc-sync 天然兼容、改动 1 小时内
+
+### 🔍 Added - 02 §2.25 /audit 工程自查/审计（v2.0.2 M16）
+
+**背景**：2026-06-25 用户顺手指出 CHANGELOG 里有 /audit v2.0.2 这一条，但 01/02 没补——按 doc-sync 规则这是违规。
+
+**调整**：
+- 01 顶部"最后更新"加"新增 /audit 工程自查"
+- 01 快速操作表加 /audit 一行
+- 01 能力速查表加 /audit 一行
+- 01 版本状态表加 M16 ✅
+- 02 §2.25 新增 /audit 完整节（6 段浅层 + 9 子系统深度 + 用法 + 测试 + 自检发现 2 个真问题）
+- 02 现状速览表 + 关键数字表 + 版本演进表 各补一行
+- 02 工作空间结构树 audit/ 子目录补 2 个具体文件
+
+**影响**：用户和 AI 现在能查到 /audit 完整说明；3 文件职责正交、doc-sync 同步更精准。
+
+### Files
+- 修改：`CLAUDE.md`（快速操作表改为导航链接）
+- 修改：`01_AI-ClaudeCode-最佳实践精简.md`（升格为速查主表 + /audit 3 处）
+- 修改：`02_工作空间功能介绍.md`（新增 §2.25 + 4 处表更新 + 工作空间结构 audit/ 节点）
+- 修改：`CHANGELOG.md`（本条）
+
+### 关联
+- 命中 self-discipline 决策树动作 4a（同步 4 文档 + CHANGELOG）
+- 为 M13 失败蒸馏器（自动检测 doc-drift）打基础
 
 ---
 
