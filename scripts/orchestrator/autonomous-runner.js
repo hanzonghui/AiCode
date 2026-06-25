@@ -209,35 +209,54 @@ function buildStagePrompt(snapshot) {
   const stage = snapshot.stage || {};
   const stageName = stage.current || snapshot.next_action || '未知阶段';
 
+  // v2.2.2 BUG #2 fix: 子会话曾把 prompt 误读为"半句话用户消息"走 SessionStart 协议，
+  // 没调 complete-stage。修复：开头加 ⚠️ 强制声明 + 任务清单提前 + 完成动作白纸黑字。
   return `
-你正在执行 AiCode 自主演进模式的一个阶段。
+⚠️⚠️⚠️ 强制上下文（不可忽略） ⚠️⚠️⚠️
 
-## 当前阶段
-${stageName}
+你正在以 \`claude -p\` 子进程身份运行，由 autonomous-runner.js 启动。
+**这不是与用户的对话**——没有用户等你回复，也没有人会补充"半句话"。
+你必须按下面的"任务清单"自主完成本阶段，**不能向任何方向发问**。
 
-## 上下文快照
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 任务清单（按顺序完成，全部必做）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【1/5】读上下文快照
+   读取 .claude/skills/left-brain/memory/sessions/latest_state.json
+
+【2/5】完成阶段开发工作
+   读代码 → 改文件 → 跑测试 → commit
+   本阶段名称: ${stageName}
+
+【3/5】保存快照
+   bash .claude/skills/left-brain/scripts/session-summary.sh save "[已完成] ${stageName}: 一句话摘要" -m "next: 下一阶段名称"
+
+【4/5】⚠️ 关键：标记阶段完成（漏掉这一步 runner 会判失败！）
+   node scripts/orchestrator/autonomous-runner.js complete-stage "下一阶段名称"
+   或如果是最后一个阶段:
+   node scripts/orchestrator/autonomous-runner.js complete-stage
+
+【5/5】直接退出（print 退出信息后 exit，不要再读任何东西）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚫 重要约束
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- ❌ 不要问"用户要我做什么"——没有用户，你看到的 prompt 就是全部
+- ❌ 不要走 SessionStart 启动协议——你不是新会话
+- ❌ 不要 git push
+- ❌ 不要删分支/删文件
+- ❌ 关键决策写入 KB 或快照
+- ✅ 单步失败 → 保存失败快照 → 退出（让 runner 重试）
+- ✅ 一次只完成一个阶段，不要贪多
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📂 上下文参考
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - 会话摘要: ${snapshot.summary || '(无)'}
 - 自主模式: ${snapshot.autonomous_state?.enabled ? 'ON' : 'OFF'}
-- 已完成的阶段: ${(stage.completed || []).join(', ') || '(无)'}
-- 计划中的下一步: ${stage.next || snapshot.next_action || '(待推断)'}
-
-## 你的任务
-1. 读取文件 \`.claude/skills/left-brain/memory/sessions/latest_state.json\` 确认完整上下文。
-2. 完成当前阶段的具体开发工作（读代码、改文件、跑测试、commit 等）。
-3. 阶段完成后，必须执行以下命令保存状态并指定下一步：
-   node scripts/orchestrator/autonomous-runner.js complete-stage "下一阶段名称"
-   或者如果这是最后一个阶段：
-   node scripts/orchestrator/autonomous-runner.js complete-stage
-4. 保存快照：
-   bash .claude/skills/left-brain/scripts/session-summary.sh save "[已完成] ${stageName}: 一句话摘要" -m "next: 下一阶段名称"
-5. 直接退出，不要等待用户输入。
-
-## 重要约束
-- 每次只完成一个阶段，不要贪多。
-- 如果阶段失败，在退出前说明失败原因。
-- 不要执行 git push。
-- 不要删除分支或文件。
-- 关键决策写入 KB 或快照。
+- 已完成阶段: ${(stage.completed || []).join(', ') || '(无)'}
+- 计划下一步: ${stage.next || snapshot.next_action || '(待推断)'}
 `.trim();
 }
 
