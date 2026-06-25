@@ -61,6 +61,22 @@ target/
 .claude/skills/left-brain/memory/distillation-log.jsonl
 .claude/skills/left-brain/memory/knowledge/KB-*.md
 
+# 左脑自动索引（session-summary.sh 自动重写）
+.claude/skills/left-brain/memory/MEMORY.md
+.claude/skills/left-brain/memory/associations/graph.json
+
+# 会话快照与状态（session-summary.sh / state-snapshot.js 自动生成）
+.claude/skills/left-brain/memory/sessions/latest_state.json
+.claude/skills/left-brain/memory/sessions/latest_summary.md
+.claude/skills/left-brain/memory/sessions/session_*.md
+00_ROOT_快速加载会话.md
+
+# 自主模式决策记录（autonomous.js 写入）
+.claude/skills/left-brain/memory/autonomous-decision-*.json
+
+# cron 报告（每日/每周自动生成）
+.claude/skills/left-brain/memory/cron-reports.json
+
 # 会话级快照模式覆盖（/snap-mode 写入，会话结束可清）
 .claude/session-snap-mode.json
 
