@@ -7,6 +7,24 @@
 
 ## [Unreleased] - LLM-judge 闸门 / M12 双轨制（v2.0.3）
 
+### 🐛 Fixed - autonomous-runner Windows spawn ENOENT
+
+**症状**：在 Windows 上启动 `/autonomous single` 或 `npm run autonomous:runner` 时，连续 5 次 `spawn claude ENOENT` 后自动停。
+
+**根因**：`scripts/orchestrator/autonomous-runner.js:233` 用 `spawn(CLAUDE_BIN, ['-p', prompt], { shell: false })`。Node.js 子进程不继承 PowerShell 的 PATH，找不到 `C:\Users\Administrator\AppData\Roaming\npm\claude.cmd`（Claude Code CLI 实际已安装）。
+
+**修复**（v2.2.0 → v2.2.1）：
+- 新增 `resolveClaudeBin()`：优先 `CLAUDE_BIN` 环境变量；Windows 上自动解析 `%APPDATA%\npm\claude.cmd`；其他回落 `claude`
+- `shell: false` → `shell: true`（让 PowerShell/cmd 接管 PATH 解析，跨 shell 边界稳）
+- ENOENT 时给清晰 hint（提示 `npm i -g @anthropic-ai/claude-code` / 设置 `CLAUDE_BIN`）
+- 导出 `resolveClaudeBin` + 7→8 测试用例（含 Windows 路径解析验证）
+- 测试：`node scripts/orchestrator/test-autonomous-runner.js` 8/8 通过
+- 验证：`resolveClaudeBin()` → `C:\Users\Administrator\AppData\Roaming\npm\claude.cmd`，exists=true
+
+**Files**：
+- 修改 `scripts/orchestrator/autonomous-runner.js`（spawn + 新增 resolveClaudeBin + 文档注释）
+- 修改 `scripts/orchestrator/test-autonomous-runner.js`（+ 1 测试用例）
+
 ### 🧠 Added - M12 LLM-judge 闸门：auto-implement 智能判定
 
 **背景**：增量 F（M7 v2.2.0）已实现 auto-implement 闭环，但"该不该学"的判定完全靠硬阈值（composite ≥ 7.0 / effort = small / 路径黑名单），本质是规则过滤而非智能判断。这导致"7.0 阈值的候选里 80% 不值得学、6.5 阈值里可能藏着好货"。

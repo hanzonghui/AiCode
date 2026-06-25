@@ -1,0 +1,14 @@
+{
+  "id": "autonomous-decision-20260625-002",
+  "ts": "2026-06-25T07:32:43.000Z",
+  "mode": "single",
+  "stage": "next: 跑 /audit 看是否还有 P0 问题",
+  "outcome": "failed",
+  "failure_count": 5,
+  "root_cause": "autonomous-runner.js:233 spawn(CLAUDE_BIN, ['-p', prompt], { shell: false }) — Windows 上 Node.js 子进程不继承 PowerShell 的 PATH，找不到 C:\\Users\\Administrator\\AppData\\Roaming\\npm\\claude.cmd（已通过 where.exe 确认该 CLI 实际安装存在）。spawn 抛 ENOENT，连续 5 次后按 .claude/rules/autonomous.md §4 自动 disable 开关。",
+  "fix_direction": "选项 A：spawn 加 shell: true（PowerShell 接管 PATH 解析，跨平台稳）\n选项 B：CLAUDE_BIN 默认改为 %APPDATA%\\npm\\claude.cmd 绝对路径（Windows 专用，最稳）\n选项 C：spawn 失败时给清晰 hint（'Claude Code CLI 未安装，请先 npm i -g @anthropic-ai/claude-code'）\n建议 A+C 组合（最小改动 + 友好提示）",
+  "next_action": "修复 runner spawn 行为后再开 single 模式验证",
+  "snapshot_ref": "20260625-153243",
+  "files_to_change": ["scripts/orchestrator/autonomous-runner.js"],
+  "priority": "P1（自主模式 v2.2.0 核心路径，单模式必跑）"
+}

@@ -43,7 +43,22 @@ const SESSIONS_DIR = path.join(MEMORY_DIR, 'sessions');
 const AUTONOMOUS_STATE_FILE = path.join(MEMORY_DIR, 'autonomous-state.json');
 const SNAPSHOT_FILE = path.join(SESSIONS_DIR, 'latest_state.json');
 
-const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude';
+// 解析 claude 可执行文件路径（处理 Windows + 跨 shell 边界）
+// - 优先用 CLAUDE_BIN 环境变量
+// - Windows 上 Node spawn 不继承 PowerShell PATH，需显式加 %APPDATA%\npm（全局 npm 目录）
+// - 找不到时返回 null，runClaudeStage 会给清晰提示
+function resolveClaudeBin() {
+  if (process.env.CLAUDE_BIN) return process.env.CLAUDE_BIN;
+  if (process.platform === 'win32') {
+    // 1. 先看 %APPDATA%\npm\claude.cmd（npm i -g 的标准位置）
+    const roaming = process.env.APPDATA && path.join(process.env.APPDATA, 'npm', 'claude.cmd');
+    if (roaming && fs.existsSync(roaming)) return roaming;
+    // 2. 退到 PATH 中的 claude
+    return 'claude';
+  }
+  return 'claude';
+}
+const CLAUDE_BIN = resolveClaudeBin();
 const MAX_FAILURES = parseInt(process.env.AUTONOMOUS_MAX_FAILURES, 10) || 5;
 const STAGE_TIMEOUT_MS = parseInt(process.env.AUTONOMOUS_STAGE_TIMEOUT_MS, 10) || 30 * 60 * 1000; // 30 分钟
 
@@ -228,12 +243,13 @@ ${stageName}
 
 function runClaudeStage(prompt) {
   return new Promise((resolve) => {
-    log('INFO', `启动 claude -p 子会话执行阶段...`);
+    log('INFO', `启动 claude -p 子会话执行阶段... (bin: ${CLAUDE_BIN})`);
 
+    // shell: true 让 PowerShell/cmd 接管 PATH 解析，跨 Windows shell 边界也能找到全局 npm CLI
     const child = spawn(CLAUDE_BIN, ['-p', prompt], {
       cwd: WORKSPACE_ROOT,
       stdio: 'inherit',
-      shell: false,
+      shell: true,
     });
 
     let timeoutId;
@@ -252,7 +268,16 @@ function runClaudeStage(prompt) {
 
     child.on('error', (err) => {
       if (timeoutId) clearTimeout(timeoutId);
-      log('ERROR', `启动子会话失败: ${err.message}`);
+      // ENOENT = spawn 时就找不到可执行文件。给清晰提示，避免静默失败
+      if (err.code === 'ENOENT') {
+        log('ERROR', `启动子会话失败: 找不到 '${CLAUDE_BIN}'`);
+        log('ERROR', `  原因: ${err.message}`);
+        log('ERROR', `  修复: 1) npm i -g @anthropic-ai/claude-code`);
+        log('ERROR', `       2) 或设置 CLAUDE_BIN 环境变量指向绝对路径`);
+        log('ERROR', `       3) 或把 claude 加入 PATH`);
+      } else {
+        log('ERROR', `启动子会话失败: ${err.message}`);
+      }
       resolve({ code: -1, signal: null, error: err.message });
     });
   });
@@ -337,7 +362,7 @@ autonomous-runner.js — 自主模式无人值守执行器
   node autonomous-runner.js complete-stage [next]       # 标记当前阶段完成
 
 环境变量:
-  CLAUDE_BIN            claude 可执行文件路径（默认: claude）
+  CLAUDE_BIN            claude 可执行文件路径（默认: Windows 上自动解析 %APPDATA%\npm\claude.cmd，其他平台回落 PATH）
   AUTONOMOUS_MAX_FAILURES   最大连续失败次数（默认: 5）
   AUTONOMOUS_STAGE_TIMEOUT_MS  单阶段超时（默认: 1800000ms = 30分钟）
 `);
@@ -427,6 +452,7 @@ module.exports = {
   buildStagePrompt,
   runClaudeStage,
   runLoop,
+  resolveClaudeBin,
   AUTONOMOUS_STATE_FILE,
   SNAPSHOT_FILE,
 };

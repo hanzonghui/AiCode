@@ -19,6 +19,7 @@ const {
   determineNextStage,
   markStageCompleted,
   buildStagePrompt,
+  resolveClaudeBin,
   SNAPSHOT_FILE,
 } = require('./autonomous-runner');
 
@@ -185,6 +186,35 @@ function testSingleModeStopsAfterOneStage() {
   console.log('✅ single 模式状态可读写');
 }
 
+function testResolveClaudeBin() {
+  // 1. CLAUDE_BIN 环境变量优先
+  const origEnv = process.env.CLAUDE_BIN;
+  process.env.CLAUDE_BIN = '/custom/path/to/claude';
+  assert.strictEqual(resolveClaudeBin(), '/custom/path/to/claude', 'CLAUDE_BIN 优先');
+  if (origEnv === undefined) delete process.env.CLAUDE_BIN;
+  else process.env.CLAUDE_BIN = origEnv;
+
+  // 2. Windows 上无环境变量时，%APPDATA%\npm\claude.cmd 存在 → 用绝对路径
+  if (process.platform === 'win32') {
+    const appdata = process.env.APPDATA;
+    if (appdata) {
+      const expected = path.join(appdata, 'npm', 'claude.cmd');
+      if (fs.existsSync(expected)) {
+        delete process.env.CLAUDE_BIN;
+        assert.strictEqual(resolveClaudeBin(), expected, 'Windows 上解析到 %APPDATA%\\npm\\claude.cmd');
+      }
+    }
+  }
+
+  // 3. 无环境变量、非 Windows 或 APPDATA 路径不存在 → 回落 'claude'（PATH 查找）
+  delete process.env.CLAUDE_BIN;
+  if (process.platform !== 'win32') {
+    assert.strictEqual(resolveClaudeBin(), 'claude', '非 Windows 回落 PATH');
+  }
+
+  console.log('✅ resolveClaudeBin');
+}
+
 // ── 主入口 ───────────────────────────────────────────
 
 function main() {
@@ -195,6 +225,7 @@ function main() {
     testBuildStagePrompt();
     testFailureRetryLimit();
     testSingleModeStopsAfterOneStage();
+    testResolveClaudeBin();
     console.log('\n🎉 全部测试通过');
     process.exit(0);
   } catch (e) {
