@@ -10,6 +10,30 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Added - 阶段 6：M16 候选汇聚桥梁（已完成 · v3.0.1）
+
+- 新增 `scripts/bridge/queue-bridge.js` — 半自动候选汇聚桥梁
+  - **3 个来源** → `evolution-plan.json` next 队列：
+    1. `data/github/candidates.json`（/evolve GitHub 扫描，suggestion='adopt'）
+    2. `04_自我演进路线.md` 末尾 backlog 段（/audit 自审整合）
+    3. `.claude/audits/audit-*.md`（最新报告，间接经 backlog 段覆盖）
+  - **ID 命名空间**：`EVOLVE-<slug>` / `AUDIT-<type-slug>`（避免与手动 ID `M1~M15` 冲突）
+  - **dedupe**：严格按 id 匹配（重复入队跳过，不覆盖）
+  - **半自动**：默认不入队 `--dry-run` 让人工 review；正式入队走 `--dry-run` 后再跑
+  - **可观测**：每次写 `data/bridge/queue-sync-YYYYMMDD-HHMM.md` 人类可读日志
+  - **接 M15**：记 `evo.task.completion_time` 评价事件（task=queue-bridge.sync）
+  - **graceful**：源文件不存在 / 损坏 JSON / 解析失败 → 返回 `[]` 不抛
+- 修复 `evolution-lock.js` 的隐藏 bug：`queue()` 不查 history，会重复入队（已加到 04.md backlog）
+- 新增 npm scripts：`queue:sync` / `queue:sync:dry` / `queue:sync:evolve` / `queue:sync:audit`
+- 测试 `scripts/orchestrator/test-queue-bridge.js` **45/45 通过**
+  - 覆盖：slugify / makeId / readEvolveCandidates / readRoadmapBacklog / aggregate / enqueueAll / dry-run / writeSyncLog / CLI / 评价事件 / graceful / 损坏 JSON
+- 全量回归通过：dispatcher 65+scoring 55+metrics 10+semantic-recall 31+evolution-metrics 42+proactive-scan 35+graph-dispatch 35+queue-bridge 45 = **318+ 测试**
+
+**L5 终极智能影响**：
+- 解决"候选来源分散无汇聚"——04.md §0.4 + /evolve + /audit 三源 → 单一权威源 evolution-plan.json
+- v3.0.1 让"演进计划怎么来"有了完整链路
+- 下游：自主模式 /auto 启动时调 `queue:sync` 自动同步候选（避免下次会话队列真空）
+
 ### Added - 阶段 5：M14 知识图谱反哺调度（已完成 · v3.0.0）
 
 - 扩展 `scripts/orchestrator/dispatcher.js`（v2.5.1 → v3.0.0）— 新增 `recallBeforeDispatch(taskText)` 钩子
