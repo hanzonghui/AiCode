@@ -173,8 +173,10 @@ async function evaluateSafety(candidate) {
     forbiddenDeps: SAFETY.FORBIDDEN_DEPS,
   });
 
-  // LLM 拒绝（一票否决）→ 不再走硬阈值
+  // LLM 拒绝（一票否决）→ 不再走硬阈值，但 reason 保持原有语义前缀（向后兼容）
   if (judge.verdict === 'reject') {
+    // HeuristicAdapter.reject reasons 已含语义化短语（如"包含禁止依赖"、"composite X < Y"）
+    // 这里包一层 "LLM-judge reject: " 前缀，便于日志区分
     return {
       allowed: false,
       reason: `LLM-judge reject: ${judge.reasons.join('; ')}`,

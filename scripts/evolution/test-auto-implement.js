@@ -36,41 +36,45 @@ function section(t) { console.log(`\n── ${t} ──`); }
 // ==================== 1. evaluateSafety 闸门 ====================
 section('1. 安全闸门 evaluateSafety');
 
-{
+(async () => {
   // composite_score 不够
-  const r1 = evaluateSafety({ composite_score: 5.0, estimated_effort: 'small', suggestion: 'adopt' });
+  const r1 = await evaluateSafety({ composite_score: 5.0, estimated_effort: 'small', suggestion: 'adopt' });
   assert(!r1.allowed && /composite/.test(r1.reason), 'composite=5 被拒');
 
   // effort=medium 被拒
-  const r2 = evaluateSafety({ composite_score: 8.0, estimated_effort: 'medium', suggestion: 'adopt' });
+  const r2 = await evaluateSafety({ composite_score: 8.0, estimated_effort: 'medium', suggestion: 'adopt' });
   assert(!r2.allowed && /effort/.test(r2.reason), 'effort=medium 被拒');
 
   // effort=large 被拒
-  const r3 = evaluateSafety({ composite_score: 8.0, estimated_effort: 'large', suggestion: 'adopt' });
+  const r3 = await evaluateSafety({ composite_score: 8.0, estimated_effort: 'large', suggestion: 'adopt' });
   assert(!r3.allowed, 'effort=large 被拒');
 
   // suggestion=skip 被拒
-  const r4 = evaluateSafety({ composite_score: 9.0, estimated_effort: 'small', suggestion: 'skip' });
+  const r4 = await evaluateSafety({ composite_score: 9.0, estimated_effort: 'small', suggestion: 'skip' });
   assert(!r4.allowed && /suggestion/.test(r4.reason), 'suggestion=skip 被拒');
 
-  // 包含禁用依赖
-  const r5 = evaluateSafety({
+  // 包含禁用依赖（reason 兼容旧"forbidden dep"前缀 + 新"禁止依赖"启发式关键字）
+  const r5 = await evaluateSafety({
     composite_score: 9.0, estimated_effort: 'small', suggestion: 'adopt',
     name: 'foo/bar', description: 'uses @anthropic-ai/sdk'
   });
-  assert(!r5.allowed && /forbidden dep/.test(r5.reason), '含 @anthropic-ai 被拒');
+  assert(!r5.allowed && /forbidden dep|禁止依赖/.test(r5.reason), '含 @anthropic-ai 被拒');
 
   // 全过
-  const r6 = evaluateSafety({
+  const r6 = await evaluateSafety({
     composite_score: 8.0, estimated_effort: 'small', suggestion: 'adopt',
     name: 'foo/bar', description: 'simple tool'
   });
   assert(r6.allowed, 'small+adopt+无禁用依赖 → 通过');
 
   // 兼容 score 字段
-  const r7 = evaluateSafety({ score: 8.0, effort: 'small', suggestion: 'adapt' });
+  const r7 = await evaluateSafety({ score: 8.0, effort: 'small', suggestion: 'adapt' });
   assert(r7.allowed, '兼容 score/effort 字段名');
-}
+
+  // M12 LLM-judge 来源标记
+  assert(typeof r6.source === 'string', 'evaluateSafety 返回 source 字段（llm/hard）');
+  assert(r6.source === 'hard' || r6.source === 'llm', `source 字段有效（${r6.source}）`);
+})();
 
 // ==================== 2. 路径黑名单 ====================
 section('2. 路径黑名单 checkPathSafety');
@@ -134,7 +138,7 @@ section('3. 双源候选加载');
 // ==================== 4. listExecutable 过滤 ====================
 section('4. listExecutable 过滤');
 
-{
+async function runListExecutableTest() {
   // 用 1 个临时 task 跑
   const tmpTasks = path.join(ROOT, 'data', 'evolution', '.test-tasks.json');
   if (fs.existsSync(TASKS_FILE)) {
@@ -151,9 +155,9 @@ section('4. listExecutable 过滤');
         { name: 'unsafe/skip', composite_score: 9.0, estimated_effort: 'small', suggestion: 'skip', description: 'skip' },
       ]
     }));
-    const list = listExecutable();
+    // listExecutable 是 async（M12 LLM-judge 接入后），需要 await
+    const list = await listExecutable();
     assert(list.length === 1 && list[0].name === 'safe/task', `只通过 1 个（实际 ${list.length}）`);
-    // 排序
     assert(list[0].composite_score >= 7.0, '通过项 composite >= 7.0');
   } finally {
     if (fs.existsSync(tmpTasks)) {
@@ -240,7 +244,7 @@ if (fail > 0) {
 console.log('✅ 全部通过');
 
 // 异步测试在文件末尾需要包 async IIFE（Node ESM 检测）
-test7().then(() => {
+test7().then(() => runListExecutableTest()).then(() => {
   console.log(`\n📊 最终: ${pass} 通过 / ${fail} 失败`);
   if (fail > 0) {
     fails.forEach(f => console.log(`  ❌ ${f.name}: ${f.detail || ''}`));
