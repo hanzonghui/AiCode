@@ -17,6 +17,7 @@
 
 const fs = require('fs')
 const path = require('path')
+const { execSync } = require('child_process')
 
 // ── 配置 ──────────────────────────────────────────────
 
@@ -34,6 +35,72 @@ const SEARCH_KEYWORDS = [
 
 const GITHUB_API = 'https://api.github.com'
 const GITHUB_TRENDING = 'https://github.com/trending'
+
+// ── GitHub Auth（v3.0.2 M18）────────────────────────────
+
+/**
+ * 读 GitHub Token（通过 gh CLI 拿，不进对话）
+ * 优先级：
+ *   1. `gh auth token`（gh CLI 已登录时返回 token）— 推荐路径
+ *   2. 环境变量 GH_TOKEN / GITHUB_TOKEN（fallback）
+ *   3. null（匿名模式，限流 60 次/小时）
+ *
+ * @returns {string|null}
+ */
+let _cachedToken = null;
+let _tokenChecked = false;
+function getGitHubToken() {
+  if (_tokenChecked) return _cachedToken;
+  _tokenChecked = true;
+
+  // 1. gh auth token
+  try {
+    const out = execSync('gh auth token', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    const tok = (out || '').trim();
+    if (tok && tok.length > 10) {
+      _cachedToken = tok;
+      return tok;
+    }
+  } catch { /* gh 未登录或不存在 */ }
+
+  // 2. 环境变量
+  const envTok = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+  if (envTok && envTok.length > 10) {
+    _cachedToken = envTok;
+    return envTok;
+  }
+
+  // 3. 匿名
+  _cachedToken = null;
+  return null;
+}
+
+/**
+ * 测试 gh CLI 是否已登录（给用户友好提示用）
+ * @returns {boolean}
+ */
+function isGhLoggedIn() {
+  try {
+    execSync('gh auth status', { stdio: ['ignore', 'pipe', 'ignore'] });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 构建带 token 的 headers（如有）
+ * @param {object} baseHeaders
+ * @returns {object}
+ */
+function authHeaders(baseHeaders) {
+  const headers = { ...baseHeaders };
+  const token = getGitHubToken();
+  if (token) {
+    headers['Authorization'] = `token ${token}`;
+  }
+  return headers;
+}
 
 // ── 工具函数 ──────────────────────────────────────────
 
@@ -111,12 +178,13 @@ async function fetchTrending() {
   console.log('📡 抓取 GitHub Trending...')
 
   try {
-    const resp = await fetch(GITHUB_TRENDING, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; ai-workspace-scanner/1.0)',
-        'Accept': 'text/html',
-      },
-    })
+    const headers = authHeaders({
+      'User-Agent': 'Mozilla/5.0 (compatible; ai-workspace-scanner/1.0)',
+      'Accept': 'text/html',
+    });
+    if (headers.Authorization) console.log('  🔑 使用 GitHub Token 认证');
+
+    const resp = await fetch(GITHUB_TRENDING, { headers });
 
     if (!resp.ok) {
       console.warn(`  ⚠ Trending 返回 ${resp.status}，跳过`)
@@ -173,15 +241,19 @@ async function searchGitHub(keyword, perPage = 10) {
   const url = `${GITHUB_API}/search/repositories?q=${encoded}&sort=stars&order=desc&per_page=${perPage}`
 
   try {
-    const resp = await fetch(url, {
-      headers: {
-        'User-Agent': 'ai-workspace-scanner/1.0',
-        'Accept': 'application/vnd.github.v3+json',
-      },
-    })
+    const headers = authHeaders({
+      'User-Agent': 'ai-workspace-scanner/1.0',
+      'Accept': 'application/vnd.github.v3+json',
+    });
+
+    const resp = await fetch(url, { headers });
 
     if (resp.status === 403) {
-      console.warn(`  ⚠ API 限流，跳过关键词: ${keyword}`)
+      const hasToken = !!getGitHubToken();
+      const hint = hasToken
+        ? '（token 已用但仍限流，可能超额）'
+        : '（未认证模式 60 次/小时限制，建议 gh auth login）';
+      console.warn(`  ⚠ API 限流，跳过关键词: ${keyword} ${hint}`);
       return []
     }
 
@@ -411,6 +483,17 @@ async function main() {
   if (args.includes('--trending')) mode = 'trending'
   else if (args.includes('--search')) mode = 'search'
 
+  // v3.0.2 M18: Token 状态检查（友好提示）
+  if (isGhLoggedIn()) {
+    console.log('🔑 检测到 gh CLI 已登录 — /evolve 走认证模式（5000 次/小时）');
+  } else if (getGitHubToken()) {
+    console.log('🔑 检测到 GH_TOKEN 环境变量 — /evolve 走认证模式');
+  } else {
+    console.log('⚠️  未配置 GitHub Token — /evolve 走匿名模式（60 次/小时限制）');
+    console.log('   建议：gh auth login --web （token 存 Credential Manager，不进对话）');
+  }
+  console.log('');
+
   await scan(mode)
 }
 
@@ -421,4 +504,14 @@ if (require.main === module) {
   })
 }
 
-module.exports = { scan, calcRelevance, parseTrendingHTML, SEARCH_KEYWORDS }
+module.exports = {
+  scan,
+  calcRelevance,
+  parseTrendingHTML,
+  fetchTrending,   // v3.0.2 M18（测试用）
+  searchGitHub,    // v3.0.2 M18（测试用）
+  SEARCH_KEYWORDS,
+  getGitHubToken,    // v3.0.2 M18
+  isGhLoggedIn,      // v3.0.2 M18
+  authHeaders,       // v3.0.2 M18
+}

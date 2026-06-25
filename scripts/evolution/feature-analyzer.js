@@ -89,7 +89,12 @@ function loadTrending() {
 
 function loadCandidates() {
   try {
-    return JSON.parse(fs.readFileSync(CANDIDATES_FILE, 'utf8'))
+    const data = JSON.parse(fs.readFileSync(CANDIDATES_FILE, 'utf8'));
+    // 容错：空文件 / {} / 缺 candidates 字段
+    if (!data || typeof data !== 'object' || !Array.isArray(data.candidates)) {
+      return { analyzed_at: null, candidates: [] };
+    }
+    return data;
   } catch {
     return { analyzed_at: null, candidates: [] }
   }

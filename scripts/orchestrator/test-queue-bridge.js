@@ -75,8 +75,17 @@ console.log('\n── 3. readEvolveCandidates 过滤 ──');
   // 用真实路径（如果存在），否则用 mock 文件
   // 测试逻辑：只 suggestion=adopt 的入
   // 这里我们不污染真文件，直接测试 readEvolveCandidates 的 graceful 行为
+  // 临时备份真实 candidates.json（如果有）→ 让 readEvolveCandidates 看不到
+  const realCandsPath = path.join(__dirname, '..', '..', 'data', 'github', 'candidates.json');
+  const realCandsExists = fs.existsSync(realCandsPath);
+  const realCandsBackup = realCandsExists ? fs.readFileSync(realCandsPath, 'utf8') : null;
+  if (realCandsExists) fs.unlinkSync(realCandsPath);
+
   const real = readEvolveCandidates();
   check('真 candidates.json 不存在时返回 []', Array.isArray(real) && real.length === 0);
+
+  // 恢复真实 candidates.json（v3.0.2 M18 后 candidates.json 经常存在）
+  if (realCandsBackup) fs.writeFileSync(realCandsPath, realCandsBackup);
 
   // 临时建一个 candidates.json 测
   setupTmp();
@@ -316,11 +325,10 @@ console.log('\n── 12. 源文件损坏 graceful ──');
   const planBackup = fs.readFileSync(planPath, 'utf8');
 
   const candsPath = path.join(__dirname, '..', '..', 'data', 'github', 'candidates.json');
-  // 确保 candidates.json 存在（先建空文件）
+  // 备份真实 candidates.json（M18 后可能存在）
   const githubDir = path.dirname(candsPath);
   if (!fs.existsSync(githubDir)) fs.mkdirSync(githubDir, { recursive: true });
-  fs.writeFileSync(candsPath, '{}');
-  const candsBackup = fs.readFileSync(candsPath, 'utf8');
+  const candsBackup = fs.existsSync(candsPath) ? fs.readFileSync(candsPath, 'utf8') : '{}';
 
   try {
     // 写损坏的 JSON

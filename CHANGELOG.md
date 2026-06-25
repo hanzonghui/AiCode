@@ -10,6 +10,25 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Added - 阶段 7：M18 /evolve GitHub API token 认证（已完成 · v3.0.2）
+
+- 修复 `scripts/evolution/github-scanner.js` — 加 `getGitHubToken()` 3 路径：
+  - `gh auth token`（推荐，gh CLI 已登录即可）
+  - 环境变量 `GH_TOKEN` / `GITHUB_TOKEN`（fallback）
+  - null（匿名模式，60 次/小时）
+- `fetchTrending` + `searchGitHub` headers 加 `Authorization: token <...>`（5000 次/小时额度）
+- `isGhLoggedIn()` 检测 + CLI 友好提示（运行 `/evolve` 时显示 token 状态）
+- 顺手修 `feature-analyzer.js` 容错 bug：`candidates.json` 为 `{}` 时不再 NPE
+- 新增 `scripts/evolution/test-github-scanner-auth.js` 14/14 通过
+  - 覆盖：3 路径 token / isGhLoggedIn / authHeaders 不可变 / fetchTrending 真带 Authorization / token 缓存 / CLI 友好提示
+- 端到端真跑通：12 关键词全跑过（之前 5 个就限流）→ 7 adopt + 11 adapt 候选生成 → bridge 自动入队
+- 顺手修 `test-queue-bridge.js` 真实 candidates.json 备份逻辑（M18 后 candidates.json 经常存在）
+
+**L5 终极智能影响**：
+- 解决"自主学习从未跑通"问题 — M18 是 v3.0.0 学习闭环的"燃料"层
+- 没有 M18：M14/M15/M16/M17 是空转（无候选来源）
+- M18 完成后：/evolve → candidates.json → bridge → next → SessionStart 提示 → 自主模式接续
+
 ### Added - 阶段 6：M16 候选汇聚桥梁（已完成 · v3.0.1）
 
 - 新增 `scripts/bridge/queue-bridge.js` — 半自动候选汇聚桥梁
