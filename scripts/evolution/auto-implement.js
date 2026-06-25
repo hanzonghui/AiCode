@@ -28,6 +28,7 @@ const path = require('path');
 const { execSync, spawnSync } = require('child_process');
 
 const { createBranch, mergeBranch, deleteBranch, hasUncommittedChanges, runTests, getCurrentBranch, gitExec } = require('./implementer');
+const { judgeCandidateWithFallback } = require('../orchestrator/llm-adapter');
 
 // ── 路径配置 ─────────────────────────────────────────
 
@@ -125,9 +126,10 @@ function loadCandidates() {
 // ── 安全闸门 ──────────────────────────────────────────
 
 /**
- * 安全评估。返回 { allowed, reason }
+ * 硬阈值评估（同步，纯规则）。返回 { allowed, reason }
+ * 这是 evaluateSafety 的"安全兜底"——任何 LLM-judge 失败或不可用时仍生效
  */
-function evaluateSafety(candidate) {
+function evaluateSafetyHard(candidate) {
   // 闸门 1: composite_score
   const score = candidate.composite_score || candidate.score || 0;
   if (score < SAFETY.MIN_COMPOSITE) {
@@ -158,6 +160,39 @@ function evaluateSafety(candidate) {
 }
 
 /**
+ * 安全评估（async，M12 LLM-judge 闸门）
+ * 双轨制：
+ *   1. 先调 judgeCandidateWithFallback —— LLM 接受 → 走硬阈值最终把关；LLM 拒绝 → 直接拒
+ *   2. LLM 不可用 / 抛错 → 降级到硬阈值（与 M7 行为完全一致，向后兼容）
+ * 返回 { allowed, reason, source: 'llm'|'hard' }
+ */
+async function evaluateSafety(candidate) {
+  const judge = await judgeCandidateWithFallback(candidate, {
+    minComposite: SAFETY.MIN_COMPOSITE,
+    allowedEffort: SAFETY.ALLOWED_EFFORT,
+    forbiddenDeps: SAFETY.FORBIDDEN_DEPS,
+  });
+
+  // LLM 拒绝（一票否决）→ 不再走硬阈值
+  if (judge.verdict === 'reject') {
+    return {
+      allowed: false,
+      reason: `LLM-judge reject: ${judge.reasons.join('; ')}`,
+      source: 'llm',
+    };
+  }
+
+  // LLM 跳过（需人工确认）→ 走硬阈值（保守：宁可放过不可漏过）
+  if (judge.verdict === 'skip') {
+    // 跳过直接由硬阈值决定（如果硬阈值也拒，那就拒）
+  }
+
+  // LLM 接受 / 跳过 / 任何情况都过 → 走硬阈值最终把关
+  const hard = evaluateSafetyHard(candidate);
+  return { ...hard, source: 'hard' };
+}
+
+/**
  * 路径安全：候选声明的输出文件不能触碰黑名单
  */
 function checkPathSafety(files = []) {
@@ -175,11 +210,11 @@ function checkPathSafety(files = []) {
 
 // ── 列出可自动实现的候选 ──────────────────────────────
 
-function listExecutable() {
+async function listExecutable() {
   const items = loadCandidates();
   const executable = [];
   for (const item of items) {
-    const safety = evaluateSafety(item);
+    const safety = await evaluateSafety(item);
     if (safety.allowed) {
       executable.push({ ...item, _safety: safety.reason });
     }
@@ -233,12 +268,12 @@ async function implementOne(candidate, opts = {}) {
   console.log(`  source: ${candidate.source}`);
   console.log(`  composite_score: ${candidate.composite_score || candidate.score}`);
   console.log(`  effort: ${candidate.estimated_effort || candidate.effort}`);
-  console.log(`  reason: ${candidate._safety || evaluateSafety(candidate).reason}`);
+  console.log(`  reason: ${candidate._safety || '(judging...)'}`);
   console.log(`${'='.repeat(60)}`);
 
-  const safety = evaluateSafety(candidate);
+  const safety = await evaluateSafety(candidate);
   if (!safety.allowed) {
-    console.log(`  ⛔ 安全闸门拒绝: ${safety.reason}`);
+    console.log(`  ⛔ 安全闸门拒绝: ${safety.reason} (source: ${safety.source})`);
     logEntry({ action: 'skip', candidate: candidate.name || candidate.feature, reason: safety.reason });
     return { success: false, reason: 'safety_rejected', detail: safety.reason };
   }
@@ -411,7 +446,7 @@ async function main() {
   const cmd = args[0] || 'status';
 
   if (cmd === 'list') {
-    const list = listExecutable();
+    const list = await listExecutable();
     console.log(`\n📋 可自动实现的候选: ${list.length} 个\n`);
     for (const [i, c] of list.entries()) {
       console.log(`  ${i + 1}. [${c.source}] ${c.name || c.feature} (composite: ${c.composite_score || c.score}, effort: ${c.estimated_effort || c.effort})`);
@@ -452,7 +487,7 @@ async function main() {
       process.exit(1);
     }
 
-    const list = listExecutable();
+    const list = await listExecutable();
     if (list.length === 0) {
       console.log('⚠ 没有可自动实现的候选');
       return;
