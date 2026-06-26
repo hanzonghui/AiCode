@@ -96,7 +96,7 @@ function findPlannedTableRegion(md) {
 
     // table 头（| 阶段 | 内容 |...）
     if (/^\|\s*阶段\s*\|/.test(line)) {
-      tableStart = i + 1; // 跳过分隔行
+      tableStart = i + 2; // 跳过表头 + 分隔行
       continue;
     }
 

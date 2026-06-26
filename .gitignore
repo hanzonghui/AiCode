@@ -51,6 +51,9 @@ target/
 # Plan 执行日志（plan-bridge 写入）
 .claude/skills/left-brain/memory/plan-execution-log.json
 
+# 路线图同步日志（sync-roadmap 写入，会话级运行态）
+data/roadmap-sync/
+
 # 自主模式状态（autonomous.js 写入，会话级开关）
 .claude/skills/left-brain/memory/autonomous-state.json
 
