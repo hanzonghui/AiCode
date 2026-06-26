@@ -10,6 +10,18 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Fixed - M20 文档清理（2026-06-26）
+
+- **症状**：04.md §十二"✅ 已完成"从 M19 直接跳 M21（缺 M20），但 `evolution-plan.json` next 队列里有 `M20: decision-assistant.js` 残留
+- **根因**：`M20` 是 handoff 时误入队的 next，未在 04.md §0.4 补增量段定义；§十二同步规则只在 commit + complete 时才 append
+- **决策**：M20 暂不实施（理由：和 dispatcher.js 重叠，对 L5 5 条达成无贡献）
+- **修复**：
+  - 从 `evolution-plan.json` next 队列删除 M20 条目
+  - 04.md §十二"✅ 已完成"计数 19 → 21（实际本来就有 21 项，文档漏写）
+  - 04.md §十二"状态统计" 19/9 → 21/9
+  - 04.md 顶部"最近一次同步"和"next 队列状态"同步更新
+- **影响**：L5 5 条达成条件不变；next 队列 9 条全部是 EVOLVE / AUDIT / RESEARCH，无悬空 ID
+
 ### Added - 阶段 9 续：M22 handoff --auto 全自动接续（已完成 · v3.0.4）
 
 - 升级 `scripts/orchestrator/handoff.js` v1.2.0 — 一条命令完成"存快照 + 入队 + 打开 VS Code 新窗口 + 复制启动命令到剪贴板"
