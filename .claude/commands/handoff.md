@@ -13,18 +13,46 @@ description: 🚀 会话交接 — 自动存快照 + 生成接续 prompt
 ## 用法
 
 ```bash
-node scripts/orchestrator/handoff.js                                   # 无参数：继续摘要里的下一步
+# 🌟 推荐：无参数 — 自动从摘要生成标题 + 下一阶段
+node scripts/orchestrator/handoff.js
+
+# 显式指定（高级用户）
 node scripts/orchestrator/handoff.js "当前标题" "下一阶段标题"
-node scripts/orchestrator/handoff.js "当前标题" --dry-run              # 预览
-node scripts/orchestrator/handoff.js "当前标题" "下一阶段" --auto        # VS Code 新窗口 + 剪贴板命令
+node scripts/orchestrator/handoff.js --dry-run                # 预览
+node scripts/orchestrator/handoff.js --auto                   # VS Code 新窗口 + 剪贴板
 ```
+
+### 🪄 无参数智能标题生成（M29 增强）
+
+不用手动写标题也能跑：
+
+```
+$ node handoff.js --dry-run
+✅ 会话交接完成
+   标题：M27 MemOS POC: skill-reuse.js 230 行 + 24/24 测试 ...（自动从 summary [已完成] 提取）
+   下一阶段：试用 1 周后决定 M26/M27 是否接 hook（自动从 summary "下一步:" 提取）
+```
+
+**自动解析顺序**：
+
+| 字段 | 来源 | 优先级 |
+|:-----|:-----|:-------|
+| **标题** | `summary` 中 `[已完成] XXX` 开头 | 1 |
+| ↓ | `summary` 第一行前 50 字符 | 2 |
+| ↓ | fallback `"会话接续（m/d HH:MM）"` | 3 |
+| **下一阶段** | `snapshot.next_action` 显式字段 | 1 |
+| ↓ | `summary` 中 `下一步: XXX` | 2 |
+| ↓ | `evolution-plan.json next[0].title` | 3 |
+| ↓ | fallback `"继续会话"` | 4 |
+
+**结论**：日常用 `/handoff` 就行，不用纠结标题。
 
 参数：
 
 | 位置 | 必填 | 说明 |
 |:----:|:----:|:-----|
-| 第一个 | ❌ | 当前会话标题（不写则读 snapshot.next_action） |
-| 第二个 | ❌ | 下一阶段标题（默认 = 第一个） |
+| 第一个 | ❌ | 当前会话标题（不写则自动从 summary 提取） |
+| 第二个 | ❌ | 下一阶段标题（不写则从 `next_action` / `下一步:` 提取） |
 
 选项：
 

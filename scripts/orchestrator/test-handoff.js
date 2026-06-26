@@ -167,31 +167,29 @@ console.log('\n── 7. 重复入队不重复 ──');
 console.log('\n── 8. 错误兜底 ──');
 
 {
-  // 临时破坏 snapshot，测试无参数且没有 next_action 时抛错
+  // 临时破坏 snapshot，测试无参数且没有 next_action 时 fallback 到 evolution-plan
   const snapBefore = fs.existsSync(snapshotPath) ? fs.readFileSync(snapshotPath, 'utf8') : null;
-  const emptySnap = { summary: '无下一步', next_action: null };
-  fs.writeFileSync(snapshotPath, JSON.stringify(emptySnap));
+  // 临时无 snapshot + 无 evolution-plan
+  const planBefore = fs.existsSync(evolutionPlanPath) ? fs.readFileSync(evolutionPlanPath, 'utf8') : null;
+  if (fs.existsSync(snapshotPath)) fs.unlinkSync(snapshotPath);
+  if (fs.existsSync(evolutionPlanPath)) {
+    const p = JSON.parse(planBefore);
+    p.next = [];
+    fs.writeFileSync(evolutionPlanPath, JSON.stringify(p));
+  }
 
   let threw = false;
   try {
     handoff(null);
   } catch (e) {
     threw = true;
-    check('无参数无 next_action 抛错', e.message.includes('无参数时'));
   }
-  check('无参数无 next_action 抛错', threw);
-
-  let threw2 = false;
-  try {
-    handoff('');
-  } catch (e) {
-    threw2 = true;
-    check('空字符串 title 且无 next 抛错', e.message.includes('无参数时'));
-  }
-  check('空字符串 title 抛错', threw2);
+  // 新行为：总是 fallback，不会抛错
+  check('无参数有 fallback（无 snap + 无 next）不抛错', !threw);
 
   // 恢复
   if (snapBefore !== null) fs.writeFileSync(snapshotPath, snapBefore);
+  if (planBefore !== null) fs.writeFileSync(evolutionPlanPath, planBefore);
 }
 
 // ==================== 8a. resolveNextFromSnapshot ====================
@@ -200,17 +198,21 @@ console.log('\n── 8a. resolveNextFromSnapshot ──');
 {
   const snapBefore = fs.existsSync(snapshotPath) ? fs.readFileSync(snapshotPath, 'utf8') : null;
 
-  fs.writeFileSync(snapshotPath, JSON.stringify({ next_action: 'M22-NOARGS-NEXT', summary: 'test' }));
+  // 1. next_action 优先作为 nextTitle
+  fs.writeFileSync(snapshotPath, JSON.stringify({ next_action: 'M22-NOARGS-NEXT', summary: '[已完成] M22 测试' }));
   const r1 = resolveNextFromSnapshot();
-  check('resolveNext 优先 next_action', r1.title === 'M22-NOARGS-NEXT');
+  check('resolveNext 优先 next_action（nextTitle）', r1.nextTitle === 'M22-NOARGS-NEXT');
+  check('resolveNext 从 summary 提取 title', r1.title.includes('M22 测试'));
 
-  fs.writeFileSync(snapshotPath, JSON.stringify({ summary: '完成 M22。\n\n下一步: M22-PARSE-NEXT' }));
+  // 2. 从 summary 解析"下一步:"
+  fs.writeFileSync(snapshotPath, JSON.stringify({ summary: '[已完成] M22 测试。\n\n下一步: M22-PARSE-NEXT' }));
   const r2 = resolveNextFromSnapshot();
-  check('resolveNext 从 summary 解析"下一步:"', r2.title === 'M22-PARSE-NEXT');
+  check('resolveNext 从 summary 解析"下一步:"（nextTitle）', r2.nextTitle === 'M22-PARSE-NEXT');
 
+  // 3. 无 next_action / "下一步" 时总是返回 fallback
   fs.writeFileSync(snapshotPath, JSON.stringify({ summary: '完成 M22。' }));
   const r3 = resolveNextFromSnapshot();
-  check('resolveNext 无匹配返回 null', r3 === null);
+  check('resolveNext 无匹配返回 fallback 对象', r3 && typeof r3 === 'object' && r3.nextTitle);
 
   if (snapBefore !== null) fs.writeFileSync(snapshotPath, snapBefore);
   else if (fs.existsSync(snapshotPath)) fs.unlinkSync(snapshotPath);
@@ -221,10 +223,10 @@ console.log('\n── 8b. 无参数 handoff() ──');
 
 {
   const snapBefore = fs.existsSync(snapshotPath) ? fs.readFileSync(snapshotPath, 'utf8') : null;
-  fs.writeFileSync(snapshotPath, JSON.stringify({ next_action: 'M22-NOARGS-NEXT', summary: 'test' }));
+  fs.writeFileSync(snapshotPath, JSON.stringify({ next_action: 'M22-NOARGS-NEXT', summary: '[已完成] M22 测试。\n\n下一步: M22-PARSE-NEXT' }));
 
   const result = handoff(null, { dryRun: true });
-  check('无参数 dry-run 返回 title', result.title === 'M22-NOARGS-NEXT');
+  check('无参数 dry-run 返回 nextTitle（next_action 优先）', result.nextTitle === 'M22-NOARGS-NEXT');
   check('无参数 dry-run prompt 含 next', result.prompt.includes('M22-NOARGS-NEXT'));
 
   if (snapBefore !== null) fs.writeFileSync(snapshotPath, snapBefore);

@@ -71,21 +71,58 @@ function loadSnapshot() {
 }
 
 /**
- * 无参数时，从 snapshot 解析下一步要做什么
- * 优先取 next_action，其次从 summary 里解析 "下一步:" / "next:" / "下一步"
+ * 无参数时，从 snapshot 自动生成 title 和 nextTitle
+ * - title：当前会话标题（已完成什么）
+ * - nextTitle：下一阶段要做什么
+ *
+ * 解析策略：
+ *   title：
+ *     1. snapshot.summary 中"已完成" / "[已完成]" 开头
+ *     2. snapshot.summary 前 50 字符
+ *     3. fallback "会话接续（{时间}）"
+ *
+ *   nextTitle：
+ *     1. snapshot.next_action（显式设置）
+ *     2. snapshot.summary 中"下一步: ..." / "next: ..."
+ *     3. evolution-plan.json next 队列第一条
+ *     4. fallback "继续会话"
+ *
  * @returns {{title: string, nextTitle: string} | null}
  */
 function resolveNextFromSnapshot() {
   const snap = loadSnapshot();
-  if (!snap) return null;
 
-  // 1. 优先显式 next_action
-  if (snap.next_action && typeof snap.next_action === 'string') {
-    return { title: snap.next_action, nextTitle: snap.next_action };
+  // ── 解析 title（当前会话已完成什么）──
+  let title = null;
+  if (snap && snap.summary) {
+    const summary = snap.summary;
+    // 1. 匹配 [已完成] XXX 或 已完成 XXX：开头
+    const doneMatch = summary.match(/^\s*\[?已完成\]?\s*(.+?)(?:\n|$)/);
+    if (doneMatch && doneMatch[1].trim()) {
+      title = doneMatch[1].trim().slice(0, 80);
+    }
+    // 2. 退化：取 summary 第一行前 50 字符
+    if (!title) {
+      const firstLine = summary.split('\n').find(l => l.trim()) || '';
+      if (firstLine) title = firstLine.trim().slice(0, 50);
+    }
+  }
+  if (!title) {
+    const now = new Date();
+    const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    title = `会话接续（${timeStr}）`;
   }
 
-  // 2. 从 summary 解析
-  if (snap.summary && typeof snap.summary === 'string') {
+  // ── 解析 nextTitle（下一阶段要做什么）──
+  let nextTitle = null;
+
+  // 1. snapshot.next_action 显式设置
+  if (snap && snap.next_action && typeof snap.next_action === 'string') {
+    nextTitle = snap.next_action.trim();
+  }
+
+  // 2. snapshot.summary 解析"下一步: ..." / "next: ..."
+  if (!nextTitle && snap && snap.summary) {
     const summary = snap.summary;
     const patterns = [
       /下一步[:：]\s*(.+?)(?:\n|$)/i,
@@ -95,13 +132,29 @@ function resolveNextFromSnapshot() {
     for (const re of patterns) {
       const m = summary.match(re);
       if (m && m[1].trim()) {
-        const t = m[1].trim();
-        return { title: t, nextTitle: t };
+        nextTitle = m[1].trim();
+        break;
       }
     }
   }
 
-  return null;
+  // 3. evolution-plan.json next 队列第一条
+  if (!nextTitle) {
+    try {
+      const planPath = path.join(WORKSPACE_ROOT, '.claude', 'skills', 'left-brain', 'memory', 'evolution-plan.json');
+      if (fs.existsSync(planPath)) {
+        const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
+        if (plan.next && plan.next.length > 0) {
+          nextTitle = `继续做下一候选：${plan.next[0].title || plan.next[0].id}`;
+        }
+      }
+    } catch {}
+  }
+
+  // 4. fallback
+  if (!nextTitle) nextTitle = '继续会话';
+
+  return { title, nextTitle };
 }
 
 function ensureHandoffDir() {
