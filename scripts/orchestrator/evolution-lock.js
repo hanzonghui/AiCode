@@ -200,6 +200,19 @@ function queue(id, title, opts = {}) {
     priority: opts.priority || 'P1',
   });
   saveState(s);
+
+  // M24 子模块 D：入队后自动调 sync-roadmap.js 同步 04.md §十二 ⏳ 段
+  // 用 spawn detached 避免阻塞主流程；sync-roadmap 内部不 throw
+  try {
+    const { spawn } = require('child_process');
+    const syncScript = path.join(__dirname, 'sync-roadmap.js');
+    spawn(process.execPath, [syncScript], {
+      cwd: WORKSPACE_ROOT,
+      stdio: 'ignore',
+      detached: true,
+    }).unref();
+  } catch { /* sync-roadmap 失败不阻塞 queue 主流程 */ }
+
   return { queued: true, state: s, reason: 'ok' };
 }
 
