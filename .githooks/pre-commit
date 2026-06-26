@@ -1,0 +1,29 @@
+#!/bin/bash
+# .githooks/pre-commit
+# git commit 触发：自动跑 npm run doc:check
+# 失败 → 拒绝 commit（防止文档漂移）
+# 安装：git config core.hooksPath .githooks
+
+set -e
+
+WORKSPACE_ROOT="$(git rev-parse --show-toplevel)"
+cd "$WORKSPACE_ROOT"
+
+echo "🧪 [pre-commit] 跑 doc:check (6 文档一致性) ..."
+
+# 跑 doc:check
+if ! npm run doc:check --silent 2>&1; then
+  echo ""
+  echo "❌ [pre-commit] doc:check 失败，commit 被拒绝"
+  echo "   原因：6 文档（CHANGELOG / 01 / 02 / 04 / 03 / CLAUDE）状态不一致"
+  echo "   修复："
+  echo "     1. 跑 npm run doc:check 看具体失败项"
+  echo "     2. 补完缺失的文档同步"
+  echo "     3. 重试 git commit"
+  echo ""
+  echo "   跳过检查（不推荐）：git commit --no-verify"
+  exit 1
+fi
+
+echo "✅ [pre-commit] doc:check 通过"
+exit 0

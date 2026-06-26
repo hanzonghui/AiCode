@@ -20,6 +20,11 @@ const {
   markStageCompleted,
   buildStagePrompt,
   resolveClaudeBin,
+  checkHandoff,  // M24-C
+  loadAutonomousState,  // M24-C
+  saveAutonomousState,  // M24-C
+  disableAutonomous,  // M24-C
+  AUTONOMOUS_STATE_FILE,
   SNAPSHOT_FILE,
 } = require('./autonomous-runner');
 
@@ -225,6 +230,66 @@ function testResolveClaudeBin() {
   console.log('✅ resolveClaudeBin');
 }
 
+// ── M24-C: checkHandoff 集成测试 ──
+
+async function testCheckHandoffTimeout() {
+  // 场景：maxWaitMs=0 立即超时 → stopped=true
+  const original = fs.existsSync(AUTONOMOUS_STATE_FILE) ? fs.readFileSync(AUTONOMOUS_STATE_FILE, 'utf8') : null;
+  saveAutonomousState({ enabled: true, awaiting_handoff: true, handoff_at: new Date().toISOString() });
+  const r = await checkHandoff(0);
+  assert.strictEqual(r.stopped, true, 'maxWaitMs=0 立即超时');
+  assert.strictEqual(r.cleared, false);
+  if (original !== null) fs.writeFileSync(AUTONOMOUS_STATE_FILE, original);
+  else if (fs.existsSync(AUTONOMOUS_STATE_FILE)) fs.unlinkSync(AUTONOMOUS_STATE_FILE);
+  console.log('✅ M24-C checkHandoff 超时');
+}
+
+async function testCheckHandoffClearedDuringWait() {
+  // 场景：等待期间被 clear → stopped=false, cleared=true
+  const original = fs.existsSync(AUTONOMOUS_STATE_FILE) ? fs.readFileSync(AUTONOMOUS_STATE_FILE, 'utf8') : null;
+  saveAutonomousState({ enabled: true, awaiting_handoff: true, handoff_at: new Date().toISOString() });
+
+  // 500ms 后清掉
+  setTimeout(() => {
+    const s = loadAutonomousState();
+    delete s.awaiting_handoff;
+    saveAutonomousState(s);
+  }, 500);
+
+  const start = Date.now();
+  // 切片是 5 秒硬编码，所以 maxWaitMs=5000 一定等 5 秒
+  // 改用更长 maxWaitMs（10000）但中途 clear → 应在第一次 5 秒切片后返回
+  const r = await checkHandoff(10000);
+  const elapsed = Date.now() - start;
+
+  assert.strictEqual(r.stopped, false, '被 clear 不超时');
+  assert.strictEqual(r.cleared, true);
+  assert(elapsed < 8000, `应在第一次 5 秒切片后返回（实际 ${elapsed}ms）`);
+
+  if (original !== null) fs.writeFileSync(AUTONOMOUS_STATE_FILE, original);
+  else if (fs.existsSync(AUTONOMOUS_STATE_FILE)) fs.unlinkSync(AUTONOMOUS_STATE_FILE);
+  console.log('✅ M24-C checkHandoff 期间被 clear');
+}
+
+function testCheckHandoffExport() {
+  assert.strictEqual(typeof checkHandoff, 'function', 'checkHandoff 必须 export');
+  assert.strictEqual(checkHandoff.length, 1, 'checkHandoff 接受 1 个参数');
+  console.log('✅ M24-C checkHandoff 是 module 导出');
+}
+
+function testCheckHandoffNoAwaiting() {
+  // 场景：没标 awaiting → 立即返回 stopped=false, cleared=true
+  const original = fs.existsSync(AUTONOMOUS_STATE_FILE) ? fs.readFileSync(AUTONOMOUS_STATE_FILE, 'utf8') : null;
+  saveAutonomousState({ enabled: true, awaiting_handoff: false });
+  return checkHandoff(5000).then((r) => {
+    assert.strictEqual(r.stopped, false);
+    assert.strictEqual(r.cleared, true);
+    if (original !== null) fs.writeFileSync(AUTONOMOUS_STATE_FILE, original);
+    else if (fs.existsSync(AUTONOMOUS_STATE_FILE)) fs.unlinkSync(AUTONOMOUS_STATE_FILE);
+    console.log('✅ M24-C checkHandoff 无 awaiting 标记');
+  });
+}
+
 // ── 主入口 ───────────────────────────────────────────
 
 function main() {
@@ -236,8 +301,22 @@ function main() {
     testFailureRetryLimit();
     testSingleModeStopsAfterOneStage();
     testResolveClaudeBin();
-    console.log('\n🎉 全部测试通过');
-    process.exit(0);
+    testCheckHandoffExport();
+
+    // 异步 M24-C 测试
+    (async () => {
+      try {
+        await testCheckHandoffTimeout();
+        await testCheckHandoffClearedDuringWait();
+        await testCheckHandoffNoAwaiting();
+        console.log('\n🎉 全部测试通过（8 原 + 4 M24-C = 12 项）');
+        process.exit(0);
+      } catch (e) {
+        console.error('\n❌ M24-C 测试失败:', e.message);
+        console.error(e.stack);
+        process.exit(1);
+      }
+    })();
   } catch (e) {
     console.error('\n❌ 测试失败:', e.message);
     console.error(e.stack);

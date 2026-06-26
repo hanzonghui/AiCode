@@ -89,7 +89,7 @@ console.log('\n── 3. extractIdsFromPlanned ──');
   } else {
     const ids = extractIdsFromPlanned(mdBackup);
     check('提取到 >= 5 个 id', ids.length >= 5);
-    check('含 M24-handoff-tutorial', ids.includes('M24-handoff-tutorial'));
+    // 不强求 M24：sync-roadmap 会把 history 里的 id 从 ⏳ 段删（M24 已完成移 ✅ 段）
     check('不含空字符串', !ids.includes(''));
   }
 }
@@ -157,7 +157,10 @@ console.log('\n── 6. sync() diff 计算 ──');
   check('result.newMd 含 TEST-NEW-1 行', result.newMd && result.newMd.includes('**TEST-NEW-1**'));
   check('result.newMd 含 TEST-NEW-2 行', result.newMd && result.newMd.includes('**TEST-NEW-2**'));
   check('result.newMd 更新顶部"最近一次同步"', result.newMd && /最近一次同步\*\*：[0-9]{4}-[0-9]{2}-[0-9]{2}/.test(result.newMd));
-  check('result.newMd 更新 next 队列状态为 2', result.newMd && /2 条候选/.test(result.newMd));
+  // next 队列状态：sync-roadmap.js v2 起用 04.md ⏳ 段实际行数（tableIds）
+  //     跑测试时 04.md 状态不确定，断言只检查"含 next 队列状态 + 数字"
+  check('result.newMd 更新 next 队列状态（行内含数字）',
+    result.newMd && /当前 `next` 队列状态.+条候选/.test(result.newMd));
 
   // 恢复
   restore();

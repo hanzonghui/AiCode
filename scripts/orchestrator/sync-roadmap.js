@@ -161,6 +161,21 @@ function findStatusStats(md) {
   return -1;
 }
 
+/**
+ * 找 §十二 ✅ 已完成段 + 数实际行数
+ * @returns {{startIdx: number, endIdx: number, lineCount: number} | null}
+ */
+function findCompletedSection(md) {
+  const startIdx = md.indexOf('### ✅ 已完成');
+  if (startIdx === -1) return null;
+  const endIdx = md.indexOf('### ⏳ 计划中', startIdx);
+  if (endIdx === -1) return null;
+  const section = md.slice(startIdx, endIdx);
+  // 匹配 | M_N | 或 | **M_N** | 行
+  const lineCount = (section.match(/^\| (\*\*)?M\d+(\*\*)? \|/gm) || []).length;
+  return { startIdx, endIdx, lineCount };
+}
+
 // ── 主同步逻辑 ────────────────────────────────────────
 
 function buildPlannedRow(entry) {
@@ -187,7 +202,8 @@ function sync() {
 
   // 1. 计算 diff
   const toAdd = next.filter(e => !tableIds.has(e.id));
-  const toRemove = [...tableIds].filter(id => !nextIds.has(id) && !historyIds.has(id));
+  // 已完成的（history 里有）从 ⏳ 段删除
+  const toRemove = [...tableIds].filter(id => !nextIds.has(id));
 
   if (toAdd.length === 0 && toRemove.length === 0) {
     result.message = '已同步，无需变更';
@@ -226,8 +242,10 @@ function sync() {
   }
 
   // 2.3 改顶部"最近一次同步" + "next 队列状态"
-  const newCount = next.length;
-  const completedCount = historyIds.size;
+  const newCount = tableIds.size;  // 04.md ⏳ 段实际行数（最权威）
+  // 2.4 用 §十二 ✅ 段实际行数算（避免 history 截断 20 导致不一致）
+  const completedSection = findCompletedSection(updatedMd);
+  const completedCount = completedSection?.lineCount || historyIds.size;
   const total = newCount + completedCount;
   const evoCount = next.filter(e => e.id.startsWith('EVOLVE-')).length;
   const auditCount = next.filter(e => e.id.startsWith('AUDIT-')).length;
@@ -245,21 +263,10 @@ function sync() {
     },
   ]);
 
-  // 2.4 改"状态统计"段
-  const statsLine = findStatusStats(updatedMd);
-  if (statsLine !== -1) {
-    const lines = updatedMd.split('\n');
-    lines[statsLine] = `| **合计** | **${total}** | — |`;
-    // 上一行是 ⏳ 计划中
-    if (statsLine > 0 && /^\|\s*⏳\s*计划中/.test(lines[statsLine - 1])) {
-      lines[statsLine - 1] = `| ⏳ 计划中 | ${newCount} | ${((newCount / total) * 100).toFixed(1)}% |`;
-    }
-    // 上两行是 ✅ 已完成
-    if (statsLine > 1 && /^\|\s*✅\s*已完成/.test(lines[statsLine - 2])) {
-      lines[statsLine - 2] = `| ✅ 已完成 | ${completedCount} | ${((completedCount / total) * 100).toFixed(1)}% |`;
-    }
-    updatedMd = lines.join('\n');
-  }
+  // 2.4 改"状态统计"段 — 注释：sync 触发多次会覆盖状态，已让 AI 手动维护
+  //    （只 sync ⏳ 段 table + 顶部时间戳，避免 race condition）
+  // const statsLine = findStatusStats(updatedMd);
+  // if (statsLine !== -1) { ... }
 
   result.updated = updatedMd !== md;
   result.newMd = updatedMd;
@@ -341,8 +348,9 @@ module.exports = {
   loadHistory,
   extractIdsFromPlanned,
   findPlannedTableRegion,
-  buildPlannedRow,
+  findCompletedSection,
   findStatusStats,
+  buildPlannedRow,
   ROADMAP_MD,
   EVOLUTION_PLAN,
 };

@@ -132,6 +132,13 @@
 | **cron 主动报告** | `npm run cron:report:daily` / `weekly` / `status` | 后台定时日报（9:37）+ 周报（周一 9:42），无人值守期间主动汇报 |
 | **工作流建议** | `/workflow` / `/workflow learn` / `/workflow status` | session-init Step 9 自动展示"接下来该做什么" |
 | **工程自查/审计** | `/audit` 或 `npm run audit` | 6 段浅层报告（工程画像/已完成/未完成/缺口/重复/建议），可一键整合到 04 backlog（详见 02 §2.25） |
+| **handoff 接续（人工）** | `/handoff` 或 `node handoff.js "标题" "下一阶段"` | 上下文 40% 时 / 想换窗口 / 5 场景教程见 `.claude/handoff/TUTORIAL.md` |
+| **handoff 接续（VS Code 新窗口）** | `/handoff "..." --auto` | 开 VS Code 新窗口 + 复制启动命令到剪贴板（v3.0.4 M22） |
+| **handoff 接续（机器接续 runner）** | `/handoff "..." --runner` 或 `node handoff.js "..." --runner` | 离开时让 runner 循环跑（v3.0.5 M24-C） |
+| **handoff 接续（人工接管 runner）** | `/handoff --resume` | runner 跑一半想换回人工（v3.0.5 M24-C） |
+| **路线图同步** | `npm run roadmap:sync` | 04.md §十二 ⏳ 段漂移时根除（v3.0.5 M24-D） |
+| **路线图同步预览** | `npm run roadmap:sync:dry` | 看完再决定是否真同步 |
+| **路线图同步状态** | `npm run roadmap:sync:status` | 看 next 队列和 04.md 是否一致 |
 | **切到后台** | `Ctrl+B` | 把当前命令放到后台跑 |
 | **看后台任务** | `/tasks` | 列所有后台运行的任务 |
 
@@ -288,6 +295,40 @@ node scripts/会话快照/backup-history.js "中文标签"
 # 下次会话加载
 cat 00_ROOT_快速加载会话.md
 ```
+
+### 📌 会话交接（handoff · v3.0.5 M24）
+
+> **5 场景教程**：[`.claude/handoff/TUTORIAL.md`](../.claude/handoff/TUTORIAL.md)
+> **何时用 handoff vs /clear**：handoff 保留进度（新会话能接续），/clear 硬切（从头来）
+
+```bash
+# 1. 晚 12 点想睡觉 — 自动接续（推荐）
+node scripts/orchestrator/handoff.js "今天做 M22" "M23: 文档清理" --auto
+# → 开 VS Code 新窗口 + 复制启动命令到剪贴板
+
+# 2. 上下文 40% 触顶 — 1 步切换
+node scripts/orchestrator/handoff.js
+# 无参数：自动读 latest_state.json 的 next_action
+
+# 3. 离开几小时让 runner 跑 — 机器接续
+node scripts/orchestrator/handoff.js "今天做完" "下一阶段" --runner
+# → spawn autonomous-runner 后台循环跑 next 队列
+# → 回来 /autonomous-stop 停止
+
+# 4. runner 跑一半想换人 — 人工接管
+node scripts/orchestrator/handoff.js --resume
+# → 调 runner stop + 固化 stage.current → next_action + 生成接续 prompt
+
+# 5. 路线图漂移修复（防止 04.md §十二 ⏳ 段假满）
+npm run roadmap:sync:status   # 先看 next 队列和 04.md 是否一致
+npm run roadmap:sync:dry      # 预览
+npm run roadmap:sync          # 真同步
+```
+
+**M24 新增 3 个能力**：
+- ✅ **状态自愈** — `session-init.sh` Step 0.5 自动清理 stale `awaiting_handoff`（实测清理 12h 残留）
+- ✅ **数据基础** — `data/handoff_lifecycle.jsonl` 记录每次 handoff_start / resume / stale_cleanup（L5 第 5 条数据基础）
+- ✅ **同步脚本** — `sync-roadmap.js` 读 `evolution-plan.json` 写 04.md，`evolution-lock.js queue` 钩子自动触发
 
 ### 📌 左脑记忆
 

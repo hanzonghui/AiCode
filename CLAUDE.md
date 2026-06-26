@@ -161,10 +161,11 @@ AiCode/
 
 ---
 
-## 🤝 会话交接助手（v3.0.4 M21 + M22 · 用户接续 vs 机器接续）
+## 🤝 会话交接助手（v3.0.5 M21 + M22 + M23 + M24 · 用户接续 vs 机器接续）
 
 > **场景**：上下文超长想 `/clear` 切换新会话 / 深夜编程次日继续 / 想换 Claude Code 窗口。
-> **答**：`/handoff` 命令自动存快照 + 生成 4 段接续 prompt，你粘到新会话第一句即可接续；加 `--auto` 打开 VS Code 新窗口并把启动命令复制到剪贴板。
+> **答**：`/handoff` 命令自动存快照 + 生成 4 段接续 prompt，你粘到新会话第一句即可接续；加 `--auto` 打开 VS Code 新窗口并把启动命令复制到剪贴板；加 `--runner` spawn autonomous-runner 后台接续（M24-C）。
+> **v3.0.5 新增**：5 场景教程（[`.claude/handoff/TUTORIAL.md`](.claude/handoff/TUTORIAL.md)）+ 状态自愈（`session-init.sh` Step 0.5）+ handoff_lifecycle.jsonl 数据基础 + sync-roadmap.js 04.md 自动同步。
 > **不破坏**：`/autonomous`（机器接续）/ `/snap-save`（纯存档）/ `/clear` / `/compact`（内建）。
 
 ### 3 种"接续"路径对比

@@ -175,7 +175,23 @@ function complete(id, summary) {
   // 历史保留最近 20 条
   s.history = s.history.slice(0, 20);
   s.current = null;
+
+  // M24-D: complete 时同步清理 next 里同 id 残留（避免 ⏳ 段重复显示）
+  s.next = s.next.filter(x => x.id !== id);
+
   saveState(s);
+
+  // 触发 sync-roadmap 让 04.md §十二 ⏳ 段自动删 + ✅ 段 AI 补（需手动）
+  try {
+    const { spawn } = require('child_process');
+    const syncScript = path.join(__dirname, 'sync-roadmap.js');
+    spawn(process.execPath, [syncScript], {
+      cwd: WORKSPACE_ROOT,
+      stdio: 'ignore',
+      detached: true,
+    }).unref();
+  } catch { /* sync-roadmap 失败不阻塞 complete */ }
+
   return { completed: true, state: s, reason: 'ok' };
 }
 

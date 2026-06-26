@@ -72,6 +72,8 @@
     "roadmap:sync": "node scripts/orchestrator/sync-roadmap.js",
     "roadmap:sync:dry": "node scripts/orchestrator/sync-roadmap.js --dry-run",
     "roadmap:sync:status": "node scripts/orchestrator/sync-roadmap.js --status",
+    "doc:check": "node scripts/orchestrator/test-doc-sync.js",
+    "precommit": "npm run doc:check",
     "evo-lock": "node scripts/orchestrator/evolution-lock.js",
     "evo-lock:status": "node scripts/orchestrator/evolution-lock.js status",
     "evo-lock:complete": "node scripts/orchestrator/evolution-lock.js complete",
