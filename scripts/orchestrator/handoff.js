@@ -154,11 +154,59 @@ function copyToClipboard(text) {
 }
 
 /**
+ * 找到 VS Code 可执行文件
+ * 顺序：where code → 常见安装路径 → 返回 null
+ * 注意：跳过 Cursor 的 code（I:\cursor\...），它和 VS Code 命令相同但用户可能是 VS Code 用户
+ */
+function findCodeExecutable() {
+  // 1. 试 where code（PATH 里有的话）
+  try {
+    const result = execFileSync('where', ['code'], { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+    const lines = result.split('\n').filter(l => l.trim() && !l.includes('INFO:'));
+    for (const line of lines) {
+      const p = line.trim();
+      // 跳过 Cursor 的 code（路径包含 cursor）
+      if (/cursor/i.test(p)) continue;
+      if (fs.existsSync(p)) return p;
+    }
+  } catch {}
+
+  // 2. 常见 Windows 安装路径（按用户优先级排序）
+  const candidates = [
+    'I:\\VSCode\\bin\\code.cmd',
+    'C:\\Program Files\\Microsoft VS Code\\bin\\code.cmd',
+    'C:\\Program Files (x86)\\Microsoft VS Code\\bin\\code.cmd',
+    'C:\\Users\\Administrator\\AppData\\Local\\Programs\\Microsoft VS Code\\bin\\code.cmd',
+  ];
+  for (const c of candidates) {
+    try {
+      if (fs.existsSync(c)) return c;
+    } catch {}
+  }
+
+  return null;
+}
+
+/**
  * 打开 VS Code 新窗口
  */
 function openVsCodeNewWindow() {
   return new Promise((resolve) => {
-    const child = spawn('code', ['--new-window', WORKSPACE_ROOT], {
+    const codePath = findCodeExecutable();
+    if (!codePath) {
+      resolve({
+        opened: false,
+        error: 'code 命令未找到。修复：1) 装 VS Code  2) 把 bin/ 加到 PATH  3) 或 VS Code → 命令面板 → "Shell Command: Install code command in PATH"',
+      });
+      return;
+    }
+
+    // code.cmd 需要走 cmd 包装
+    const useCmd = codePath.endsWith('.cmd') || codePath.endsWith('.bat');
+    const cmd = useCmd ? 'cmd' : codePath;
+    const args = useCmd ? ['/c', codePath, '--new-window', WORKSPACE_ROOT] : ['--new-window', WORKSPACE_ROOT];
+
+    const child = spawn(cmd, args, {
       cwd: WORKSPACE_ROOT,
       stdio: 'ignore',
       detached: true,
@@ -707,6 +755,7 @@ function main() {
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log(r.command);
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        process.exit(0);
       });
     } else if (runner) {
       console.log('🤖 --runner 模式：spawn autonomous-runner.js 后台接续...');
