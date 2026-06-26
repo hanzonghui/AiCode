@@ -137,6 +137,7 @@
 | **handoff 接续（机器接续 runner）** | `/handoff "..." --runner` 或 `node handoff.js "..." --runner` | 离开时让 runner 循环跑（v3.0.5 M24-C） |
 | **handoff 接续（人工接管 runner）** | `/handoff --resume` | runner 跑一半想换回人工（v3.0.5 M24-C） |
 | **路线图同步** | `npm run roadmap:sync` | 04.md §十二 ⏳ 段漂移时根除（v3.0.5 M24-D） |
+| **L1→L5 智能演进** | v3.0.4 M23 | 4 文档全景图 + 5 级速览 + v4.0.0 触发条件 + L5 5 条达成 |
 | **路线图同步预览** | `npm run roadmap:sync:dry` | 看完再决定是否真同步 |
 | **路线图同步状态** | `npm run roadmap:sync:status` | 看 next 队列和 04.md 是否一致 |
 | **切到后台** | `Ctrl+B` | 把当前命令放到后台跑 |
@@ -308,14 +309,6 @@ cat 00_ROOT_快速加载会话.md
 
 > **自动行为**：标题从会话摘要 `[已完成]` 自动提取，下一阶段从 `下一步:` 自动提取。
 > **5 场景教程**：[`.claude/handoff/TUTORIAL.md`](../.claude/handoff/TUTORIAL.md)
-
-**M24 已含 3 个能力**：
-- ✅ **状态自愈** — `session-init.sh` Step 0.5 自动清理 stale `awaiting_handoff`（实测清理 12h 残留）
-- ✅ **数据基础** — `data/handoff_lifecycle.jsonl` 记录每次 handoff_start / resume / stale_cleanup（L5 第 5 条数据基础）
-- ✅ **同步脚本** — `sync-roadmap.js` 读 `evolution-plan.json` 写 04.md，`evolution-lock.js queue` 钩子自动触发
-- ✅ **M23 L1→L5 用户视角** — 4 文档同步：全景图 + 5 级速览 + v4.0.0 触发条件 + L5 5 条达成完整版
-- ✅ **M29 无参数智能标题** — 自动从摘要提取，**不用手写标题**
-- ✅ **M28 跨平台** — Windows / macOS / Linux 都能开 VS Code 新窗口
 
 ### 📌 左脑记忆
 
