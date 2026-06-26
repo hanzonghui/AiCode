@@ -40,6 +40,7 @@ const SNAPSHOT_FILE = path.join(MEMORY_DIR, 'sessions', 'latest_state.json');
 const SESSION_SUMMARY_SCRIPT = path.join(SKILL_DIR, 'scripts', 'session-summary.sh');
 const HANDOFF_DIR = path.join(WORKSPACE_ROOT, '.claude', 'handoff');
 const CONTINUE_PROMPT_FILE = path.join(HANDOFF_DIR, 'continue.prompt.md');
+const HANDOFF_LIFECYCLE_FILE = path.join(MEMORY_DIR, 'handoff_lifecycle.jsonl');
 
 // ── 工具函数 ─────────────────────────────────────────
 
@@ -287,7 +288,73 @@ function markAwaitingHandoff(nextTitle, reason) {
   state.handoff_reason = reason || null;
   state.next_action = nextTitle;
   saveAutonomousState(state);
+
+  // M24-B: 写 handoff_lifecycle.jsonl（数据基础 · L5 第 5 条）
+  appendHandoffLifecycle({
+    event: 'handoff_start',
+    from: reason || null,
+    to: nextTitle,
+    mode: 'auto',
+    handoff_at: state.handoff_at,
+  });
+
   return state;
+}
+
+/**
+ * M24-B: 清除 stale awaiting_handoff（age > maxAgeHours）
+ * SessionStart hook 调用，清掉 handoff 后没开新会话的脏标记
+ * @param {number} maxAgeHours
+ * @returns {{cleared: boolean, age_hours: number|null, reason: string}}
+ */
+function clearAwaitingHandoffIfStale(maxAgeHours = 2) {
+  const state = loadAutonomousState();
+  if (!state.awaiting_handoff) {
+    return { cleared: false, age_hours: null, reason: 'not awaiting' };
+  }
+  if (!state.handoff_at) {
+    // 标记了 awaiting 但没时间戳（早期数据）→ 强制清
+    delete state.awaiting_handoff;
+    delete state.handoff_at;
+    delete state.handoff_next;
+    delete state.handoff_reason;
+    saveAutonomousState(state);
+    appendHandoffLifecycle({ event: 'handoff_stale_cleanup', reason: 'no handoff_at timestamp' });
+    return { cleared: true, age_hours: null, reason: 'no handoff_at' };
+  }
+
+  const ageHours = (Date.now() - new Date(state.handoff_at).getTime()) / 3600000;
+  if (ageHours > maxAgeHours) {
+    delete state.awaiting_handoff;
+    delete state.handoff_at;
+    delete state.handoff_next;
+    delete state.handoff_reason;
+    saveAutonomousState(state);
+    appendHandoffLifecycle({
+      event: 'handoff_stale_cleanup',
+      age_hours: parseFloat(ageHours.toFixed(2)),
+      max_age_hours: maxAgeHours,
+    });
+    return { cleared: true, age_hours: ageHours, reason: 'expired' };
+  }
+
+  return { cleared: false, age_hours: ageHours, reason: 'within window' };
+}
+
+/**
+ * M24-B: 追加一行到 handoff_lifecycle.jsonl
+ * 数据 schema: {at, event, ...}
+ * @param {object} entry
+ */
+function appendHandoffLifecycle(entry) {
+  try {
+    fs.mkdirSync(path.dirname(HANDOFF_LIFECYCLE_FILE), { recursive: true });
+    const line = JSON.stringify({
+      at: now(),
+      ...entry,
+    }) + '\n';
+    fs.appendFileSync(HANDOFF_LIFECYCLE_FILE, line, 'utf8');
+  } catch { /* lifecycle 失败不阻塞 handoff */ }
 }
 
 /**
@@ -295,11 +362,24 @@ function markAwaitingHandoff(nextTitle, reason) {
  */
 function clearAwaitingHandoff() {
   const state = loadAutonomousState();
+  const wasAwaiting = state.awaiting_handoff === true;
+  const handoffAt = state.handoff_at;
   delete state.awaiting_handoff;
   delete state.handoff_at;
   delete state.handoff_next;
   delete state.handoff_reason;
   saveAutonomousState(state);
+
+  // M24-B: 写 resume 事件（含 age_minutes）
+  if (wasAwaiting && handoffAt) {
+    const ageMin = (Date.now() - new Date(handoffAt).getTime()) / 60000;
+    appendHandoffLifecycle({
+      event: 'handoff_resume',
+      age_minutes: parseFloat(ageMin.toFixed(2)),
+      handoff_at: handoffAt,
+    });
+  }
+
   return state;
 }
 
@@ -553,6 +633,8 @@ module.exports = {
   saveSnapshot,
   markAwaitingHandoff,
   clearAwaitingHandoff,
+  clearAwaitingHandoffIfStale,  // M24-B
+  appendHandoffLifecycle,        // M24-B
   loadAutonomousState,
   loadSnapshot,
   resolveNextFromSnapshot,
@@ -562,4 +644,5 @@ module.exports = {
   spawnClaudeContinuation,
   CONTINUE_PROMPT_FILE,
   HANDOFF_DIR,
+  HANDOFF_LIFECYCLE_FILE,
 };

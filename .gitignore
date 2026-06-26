@@ -57,6 +57,9 @@ data/roadmap-sync/
 # 自主模式状态（autonomous.js 写入，会话级开关）
 .claude/skills/left-brain/memory/autonomous-state.json
 
+# M24-B: handoff 生命周期日志（运行态，会话级）
+.claude/skills/left-brain/memory/handoff_lifecycle.jsonl
+
 # 演进计划锁状态（evolution-lock.js 写入，P0-0 元能力，会话级）
 .claude/skills/left-brain/memory/evolution-plan.json
 

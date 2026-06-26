@@ -29,6 +29,26 @@ else
 fi
 echo ""
 
+# M24-B: handoff 状态自愈 — 清理 stale awaiting_handoff（handoff 后 > 2h 未接续）
+echo "🤝 Step 0.5: handoff 状态自愈（M24-B）"
+if [ -n "$WORKSPACE_ROOT" ] && [ -f "$WORKSPACE_ROOT/scripts/orchestrator/handoff.js" ]; then
+  HANDOFF_CLEANUP=$(cd "$WORKSPACE_ROOT" && node -e "const h=require('./scripts/orchestrator/handoff.js'); const r=h.clearAwaitingHandoffIfStale(2); console.log(JSON.stringify(r))" 2>/dev/null)
+  if [ -n "$HANDOFF_CLEANUP" ]; then
+    CLEANED=$(echo "$HANDOFF_CLEANUP" | grep -o '"cleared":[a-z]*' | cut -d: -f2)
+    if [ "$CLEANED" = "true" ]; then
+      echo "  🧹 已清理 stale awaiting_handoff: $HANDOFF_CLEANUP"
+    else
+      REASON=$(echo "$HANDOFF_CLEANUP" | grep -o '"reason":"[^"]*"' | cut -d'"' -f4)
+      echo "  ✅ 无需清理（$REASON）"
+    fi
+  else
+    echo "  ⏭️  handoff.js 暂时不可用，跳过清理"
+  fi
+else
+  echo "  ⚠️ handoff.js 未找到"
+fi
+echo ""
+
 echo "📚 Step 1: 加载知识索引"
 if [ -f "$MEMORY_FILE" ]; then
     knowledge_count=$(grep -E '知识总数:' "$MEMORY_FILE" | sed 's/.*知识总数: //')
