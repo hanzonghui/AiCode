@@ -25,7 +25,7 @@ const path = require('path');
 const Metrics = require('./metrics');
 try { fs.unlinkSync(Metrics.METRICS_FILE); } catch { /* ok */ }
 
-const { handoff, buildHandoffPrompt, saveSnapshot, markAwaitingHandoff, clearAwaitingHandoff, loadAutonomousState, loadSnapshot, resolveNextFromSnapshot, writeContinuePromptFile, copyToClipboard, CONTINUE_PROMPT_FILE, HANDOFF_DIR } = require('./handoff');
+const { handoff, buildHandoffPrompt, saveSnapshot, markAwaitingHandoff, clearAwaitingHandoff, clearAwaitingHandoffIfStale, appendHandoffLifecycle, loadAutonomousState, loadSnapshot, resolveNextFromSnapshot, writeContinuePromptFile, copyToClipboard, spawnRunnerContinuation, resumeFromRunner, CONTINUE_PROMPT_FILE, HANDOFF_DIR, HANDOFF_LIFECYCLE_FILE } = require('./handoff');
 
 let pass = 0, fail = 0;
 const fails = [];
@@ -328,7 +328,138 @@ console.log('\n── 12. M22 --auto 模式 ──');
   check('M22 handoff() next 真入队', planFinal.next.some(x => x.id === 'M22-dry-run-next'));
 }
 
+// ==================== M24-B: clearAwaitingHandoffIfStale ====================
+console.log('\n── M24-B: clearAwaitingHandoffIfStale ──');
+
+{
+  const { clearAwaitingHandoffIfStale, markAwaitingHandoff, appendHandoffLifecycle, loadAutonomousState } = require('./handoff');
+
+  // 1. 没 awaiting 标记 → 不清
+  const r1 = clearAwaitingHandoffIfStale(2);
+  check('B1 无 awaiting 时不清理', r1.cleared === false);
+
+  // 2. 标 awaiting 但无 handoff_at → 强制清
+  const planStatePath2 = path.join(__dirname, '..', '..', '.claude', 'skills', 'left-brain', 'memory', 'autonomous-state.json');
+  const stateNow = JSON.parse(fs.readFileSync(planStatePath2, 'utf8'));
+  stateNow.awaiting_handoff = true;
+  delete stateNow.handoff_at;
+  fs.writeFileSync(planStatePath2, JSON.stringify(stateNow));
+  const r2 = clearAwaitingHandoffIfStale(2);
+  check('B2 无 handoff_at 强制清', r2.cleared === true);
+  check('B2 强制清后 awaiting=false',
+    JSON.parse(fs.readFileSync(planStatePath2, 'utf8')).awaiting_handoff !== true);
+
+  // 3. 标 awaiting + 1h 前 handoff_at → 不清（within window）
+  const stateNow2 = JSON.parse(fs.readFileSync(planStatePath2, 'utf8'));
+  stateNow2.awaiting_handoff = true;
+  stateNow2.handoff_at = new Date(Date.now() - 1 * 3600 * 1000).toISOString();
+  stateNow2.handoff_next = 'TEST-M24-B';
+  fs.writeFileSync(planStatePath2, JSON.stringify(stateNow2));
+  const r3 = clearAwaitingHandoffIfStale(2);
+  check('B3 1h 内不清理', r3.cleared === false);
+  check('B3 1h 内 awaiting 保留',
+    JSON.parse(fs.readFileSync(planStatePath2, 'utf8')).awaiting_handoff === true);
+
+  // 4. 标 awaiting + 3h 前 → 清理
+  const stateNow3 = JSON.parse(fs.readFileSync(planStatePath2, 'utf8'));
+  stateNow3.awaiting_handoff = true;
+  stateNow3.handoff_at = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
+  stateNow3.handoff_next = 'TEST-M24-B-stale';
+  fs.writeFileSync(planStatePath2, JSON.stringify(stateNow3));
+  const r4 = clearAwaitingHandoffIfStale(2);
+  check('B4 3h 后清理', r4.cleared === true);
+  check('B4 清理后 awaiting=false',
+    JSON.parse(fs.readFileSync(planStatePath2, 'utf8')).awaiting_handoff !== true);
+  check('B4 清理 age_hours ≈ 3', r4.age_hours > 2.9 && r4.age_hours < 3.1);
+}
+
+// ==================== M24-B: appendHandoffLifecycle ====================
+console.log('\n── M24-B: appendHandoffLifecycle ──');
+
+{
+  const { appendHandoffLifecycle, HANDOFF_LIFECYCLE_FILE } = require('./handoff');
+
+  // 备份
+  const lcBackup = fs.existsSync(HANDOFF_LIFECYCLE_FILE) ? fs.readFileSync(HANDOFF_LIFECYCLE_FILE, 'utf8') : null;
+  try { fs.unlinkSync(HANDOFF_LIFECYCLE_FILE); } catch {}
+
+  appendHandoffLifecycle({ event: 'test_event_1', foo: 'bar' });
+  appendHandoffLifecycle({ event: 'test_event_2', baz: 42 });
+
+  const lines = fs.readFileSync(HANDOFF_LIFECYCLE_FILE, 'utf8').trim().split('\n');
+  check('B5 lifecycle 写 2 行', lines.length === 2);
+  const e1 = JSON.parse(lines[0]);
+  const e2 = JSON.parse(lines[1]);
+  check('B5 lifecycle 每行有 at 字段', !!e1.at && !!e2.at);
+  check('B5 lifecycle 字段保留 (event/foo/baz)', e1.event === 'test_event_1' && e1.foo === 'bar' && e2.baz === 42);
+
+  // 恢复
+  if (lcBackup !== null) fs.writeFileSync(HANDOFF_LIFECYCLE_FILE, lcBackup);
+  else try { fs.unlinkSync(HANDOFF_LIFECYCLE_FILE); } catch {}
+}
+
+// ==================== M24-C: --runner / --resume / spawnRunnerContinuation ====================
+console.log('\n── M24-C: --runner / --resume 模式 ──');
+
+{
+  const { spawnRunnerContinuation, resumeFromRunner } = require('./handoff');
+  const { execFileSync } = require('child_process');
+
+  // 1. CLI --auto --runner 互斥
+  let mutexOk = false;
+  try {
+    execFileSync('node', [path.join(__dirname, 'handoff.js'), 'test', '--auto', '--runner'], {
+      encoding: 'utf8', stdio: 'pipe', cwd: path.join(__dirname, '..', '..'),
+    });
+  } catch (e) {
+    mutexOk = /互斥/.test(e.stderr || '') || /互斥/.test(e.stdout || '');
+  }
+  check('C1 --auto --runner 互斥', mutexOk);
+
+  // 2. CLI --resume 工作（无 runner 在跑场景）
+  const r2 = execFileSync('node', [path.join(__dirname, 'handoff.js'), '--resume'], {
+    encoding: 'utf8', stdio: 'pipe', cwd: path.join(__dirname, '..', '..'),
+  });
+  check('C2 --resume 调 runner stop', r2.includes('调 autonomous-runner.js stop'));
+  check('C2 --resume 输出 next_action', r2.includes('next_action:'));
+
+  // 3. spawnRunnerContinuation spawn 子进程 + 写 lifecycle
+  const lcBackup2 = fs.existsSync(HANDOFF_LIFECYCLE_FILE) ? fs.readFileSync(HANDOFF_LIFECYCLE_FILE, 'utf8') : null;
+  const beforeLines = lcBackup2 ? lcBackup2.trim().split('\n').length : 0;
+  spawnRunnerContinuation('TEST-M24-C-spawn').then((r) => {
+    check('C3 spawnRunnerContinuation 返回 spawned=true', r.spawned === true);
+    check('C3 spawnRunnerContinuation 返回 runnerPid', typeof r.runnerPid === 'number' && r.runnerPid > 0);
+    // 等 200ms 让 appendFile 落盘
+    setTimeout(() => {
+      const afterLines = fs.readFileSync(HANDOFF_LIFECYCLE_FILE, 'utf8').trim().split('\n').length;
+      check('C3 写 handoff_to_runner lifecycle (行数+1)', afterLines === beforeLines + 1);
+      const lastLine = fs.readFileSync(HANDOFF_LIFECYCLE_FILE, 'utf8').trim().split('\n').slice(-1)[0];
+      const lastEvt = JSON.parse(lastLine);
+      check('C3 lifecycle event=handoff_to_runner', lastEvt.event === 'handoff_to_runner');
+      check('C3 lifecycle runner_pid 是数字', typeof lastEvt.runner_pid === 'number');
+      // 清理
+      if (lcBackup2 !== null) fs.writeFileSync(HANDOFF_LIFECYCLE_FILE, lcBackup2);
+      else try { fs.unlinkSync(HANDOFF_LIFECYCLE_FILE); } catch {}
+      // 杀掉刚 spawn 的 runner 进程
+      try { process.kill(r.runnerPid, 'SIGTERM'); } catch {}
+      // 输出总结
+      console.log('');
+      console.log(`📊 M21+M22+M24-B+C handoff 测试: ${pass}/${pass + fail} 通过, ${fail} 失败`);
+      if (fail > 0) {
+        console.log('失败项:');
+        fails.forEach(f => console.log(`  - ${f}`));
+      }
+      process.exit(fail > 0 ? 1 : 0);
+    }, 200);
+  }).catch((e) => {
+    console.error('C3 测试异常:', e);
+    process.exit(1);
+  });
+}
+
 // ==================== 清理 + 总结 ====================
+// 注意: M24-C 测试是异步的，其内部已包含"总结"输出与 process.exit
+// 此处保留同步分支的清理逻辑（C 之前的所有测试）
 
 // 恢复 backups
 if (stateBackup !== null) fs.writeFileSync(planStatePath, stateBackup);
@@ -338,10 +469,13 @@ else if (fs.existsSync(snapshotPath)) fs.unlinkSync(snapshotPath);
 if (planBackup !== null) fs.writeFileSync(evolutionPlanPath, planBackup);
 else if (fs.existsSync(evolutionPlanPath)) fs.unlinkSync(evolutionPlanPath);
 
-console.log('');
-console.log(`📊 M21+M22 handoff 测试: ${pass}/${pass + fail} 通过, ${fail} 失败`);
-if (fail > 0) {
-  console.log('失败项:');
-  fails.forEach(f => console.log(`  - ${f}`));
+// 如果 C 块没接走（理论不会），这里兜底
+if (typeof process !== 'undefined' && !process.exitCode) {
+  console.log('');
+  console.log(`📊 M21+M22+M24-B+C handoff 测试: ${pass}/${pass + fail} 通过, ${fail} 失败`);
+  if (fail > 0) {
+    console.log('失败项:');
+    fails.forEach(f => console.log(`  - ${f}`));
+  }
+  process.exit(fail > 0 ? 1 : 0);
 }
-process.exit(fail > 0 ? 1 : 0);
