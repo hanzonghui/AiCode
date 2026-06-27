@@ -47,6 +47,27 @@
 - **L5 影响**：用户/AI 上手 4 skill 路径缩短 30 min → 5 min（看 1 张表 vs 翻 4 个 SKILL.md）
 - **关联**：M25 skill 升格（4 skill 完整）+ 04.md §0.5 L5 路径
 
+### Fixed - README.md + PROJECT-CONTEXT.md 严重过期重写（2026-06-27）
+
+- **痛点**：两个**新用户/新会话首看**的文档停留在 v2.0.0 / v1.9，但工程已 v3.0.5（M25~M32 · 4 skill + swarm + SKILL_INDEX）
+  - **README.md**（266 行）：标"v2.0.0 自主模式 + v1.9.1/2/3 四大智能增量"+ "15 测试 / 181 断言" → 实际 v3.0.5 / 26+ 测试 / 300+ 断言
+  - **PROJECT-CONTEXT.md**（108 行）：版本 v1.9 + 6 个核心系统（无 audit/autonomous/swarm/metrics） → 实际 v3.0.5 + 11 个核心系统
+  - **CI badge 占位符** `<USER>/<REPO>` 一直没替换 → GitHub 仓库首页显示坏链
+  - **过期引用**：`.skill/` 排除项（早删）、`.workspace/setup.sh`（被 session-init 替代）、6 个 AI 工具支持（实际只支持 Claude Code）
+- **修复**（3 文件重写）：
+  - **README.md**：266 行 → 109 行项目名片
+    - 1 句话定位 + 3 步快速开始 + 8 行能力表 + 简版结构树 + 迁移注意 + 测试基线 + 详细文档导航
+    - 消除所有与 CLAUDE.md 重复内容（§1 核心定位 / §1.3 系统表 / §二 目录结构）
+  - **PROJECT-CONTEXT.md**：108 行 → 123 行全貌速览
+    - 版本 v1.9 → v3.0.5
+    - 核心系统 6 个 → 11 个（+ audit / autonomous / swarm / metrics / workflow / handoff / self-discipline / evolution-lock / sync-roadmap）
+    - 命令路径同步：`scripts/会话快照/save.js` → `bash session-summary.sh save ... -m "..."`
+    - 加 L5 自治运行 5 条进度表
+  - **`.claude/rules/doc-sync.md`**：6 文档 → 8 文档表（加 README + PROJECT-CONTEXT 必同步），文档顶部注释同步升级到 v3 8 文档版
+- **验证**：`npm run doc:check` **26 通过 / 0 失败**；M33 入队自动触发 sync-roadmap
+- **L5 影响**：新用户首次打开仓库看到的是 v3.0.5 而非 v2.0.0；session-init 自动加载的"1 分钟全貌"是真实的 11 个系统而非过期的 6 个；L5 第 5 条"人工干预率"减少 1 次"读错版本"的认知负担
+- **关联**：M32 SKILL_INDEX（M33 的输入）+ M25 skill 升格（核心系统数变化）+ doc-sync v2 强化（用户可见判断标准）
+
 ### Added - M31 多 Agent Swarm 协调 POC（借鉴 ruvnet/ruflo · 2026-06-27）
 
 - **痛点**：AiCode dispatcher 只决定"派不派 + 派几个",派出去的 Agent 各自独立回答,没有"汇总 + 投票"机制。复杂任务单 Agent 视角容易盲。
