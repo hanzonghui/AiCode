@@ -62,6 +62,14 @@ node scripts/evolution/daily-evolution.js report
 ```
 生成进化趋势报告。
 
+### self-evolve — GEPA skill 自我进化（M34）
+```bash
+node scripts/evolution/daily-evolution.js self-evolve --skill=evolve --dry-run
+node scripts/evolution/daily-evolution.js self-evolve --skill=evolve --iterations=5 --population=8
+node scripts/evolution/daily-evolution.js self-evolve --skill=evolve --apply
+```
+基于 Hermes Self-Evolution 的 GEPA（Genetic-Pareto Prompt Evolution）机制，对指定 skill 的 SKILL.md body 做遗传优化。读 logs/app.jsonl 收集执行轨迹，启发式评估 fitness（清晰度/覆盖率/错误减少/信息密度），多目标 Pareto 选择，输出候选到 `data/gepa/<skill>/<date>/`，并自动备份原 SKILL.md。`--apply` 才会覆盖原文件，否则只输出报告供人工 review。
+
 ## 执行步骤
 
 1. 解析用户输入的子命令（默认 run）

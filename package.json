@@ -107,7 +107,11 @@
     "evolve:implement": "node scripts/evolution/daily-evolution.js implement",
     "evolve:status": "node scripts/evolution/daily-evolution.js status",
     "trend": "node scripts/evolution/trend-watcher.js check",
-    "evolve:analyze-self": "node scripts/evolution/self-analyzer.js run"
+    "evolve:analyze-self": "node scripts/evolution/self-analyzer.js run",
+    "gepa:evolve": "node scripts/evolution/gepa-runner.js --skill=evolve",
+    "gepa:dry": "node scripts/evolution/gepa-runner.js --skill=evolve --dry-run",
+    "gepa:apply": "node scripts/evolution/gepa-runner.js --skill=evolve --apply",
+    "gepa:test": "node scripts/evolution/test-gepa.js"
   },
   "keywords": [
     "claude-code",

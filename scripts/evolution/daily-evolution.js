@@ -22,6 +22,7 @@ const { scan } = require('./github-scanner')
 const { analyze } = require('./feature-analyzer')
 const { implementCandidate, rollback, status: implStatus, markAsEvolved } = require('./implementer')
 const { dailyCheck, weeklyCheck, monthlyAudit, autoCheck, status: watchStatus } = require('./trend-watcher')
+const { run: gepaRun } = require('./gepa-runner')
 
 // ── 配置 ──────────────────────────────────────────────
 
@@ -315,6 +316,21 @@ async function main() {
     case 'status':
       implStatus()
       break
+    case 'self-evolve': {
+      const skillIdx = args.indexOf('--skill')
+      const skillName = skillIdx !== -1 && args[skillIdx + 1] ? args[skillIdx + 1] : 'evolve'
+      const iterIdx = args.indexOf('--iterations')
+      const iterations = iterIdx !== -1 && args[iterIdx + 1] ? parseInt(args[iterIdx + 1], 10) : undefined
+      const popIdx = args.indexOf('--population')
+      const population = popIdx !== -1 && args[popIdx + 1] ? parseInt(args[popIdx + 1], 10) : undefined
+      await gepaRun(skillName, {
+        dryRun: args.includes('--dry-run'),
+        apply: args.includes('--apply'),
+        iterations,
+        population,
+      })
+      break
+    }
     default:
       console.log(`
 AiCode 自我进化系统 v1.0
@@ -329,6 +345,14 @@ AiCode 自我进化系统 v1.0
   node daily-evolution.js log           # 进化历史
   node daily-evolution.js watch         # 持续感知（自动判断层级）
   node daily-evolution.js report        # 趋势报告
+  node daily-evolution.js self-evolve [opts]  # GEPA skill 自我进化（M34）
+
+self-evolve 选项：
+  --skill=<name>        目标 skill（默认 evolve）
+  --iterations=<N>      遗传迭代次数（默认 5）
+  --population=<N>      种群大小（默认 8）
+  --dry-run             只输出计划，不实际跑
+  --apply               跑完后直接覆盖原 SKILL.md
 `)
   }
 }

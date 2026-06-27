@@ -10,6 +10,25 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Added - M34 GEPA skill 自我进化原型（2026-06-28）
+
+- **痛点**：AiCode 已有完整的 L4 外部学习闭环（/evolve 扫描 GitHub 候选 + LLM-judge + auto-implement），但**没有 skill 自我进化能力** — `evolve` SKILL.md 写得不好时只能手动改。最近研究 NousResearch Hermes Agent（DSPy + GEPA + execution traces 反思式 prompt 进化），发现正好补这块缺口。
+- **借鉴**：[`NousResearch/hermes-agent-self-evolution`](https://github.com/NousResearch/hermes-agent-self-evolution) 的 GEPA 思路（Genetic-Pareto Prompt Evolution · ICLR 2026 Oral），但 MVP 不引 DSPy 依赖，用纯 Node.js 实现简化版遗传算法。
+- **新增**（5 模块 + 1 数据集 + 1 测试 + 1 npm script）：
+  - `scripts/evolution/skill-evaluator.js` — 4 维 Pareto fitness（clarity / coverage / error_reduction / size_eff），启发式评估为主，预留 LLM 接口
+  - `scripts/evolution/constraint-gates.js` — 5 道护栏（frontmatter 结构 / body ≤5000 字符 / 步骤 ≤20 / 禁破坏性命令 / 版本不降级 / 命令子集兼容）
+  - `scripts/evolution/gepa-optimizer.js` — 遗传算法核心：4 种变异算子（同义词替换 / 列表重排 / 标题强调 / section 重排）+ 两段式交叉 + tournament 选择 + elite 保留
+  - `scripts/evolution/trace-collector.js` — 从 `logs/app.jsonl` 收集与 skill 相关的执行轨迹，按 component 过滤 + outcome 推断
+  - `scripts/evolution/gepa-runner.js` — 主控器：读 SKILL.md → 加载 eval dataset → 收集 traces → 跑 GEPA → 输出候选到 `data/gepa/<skill>/<date>/` + 自动备份原 SKILL.md
+  - `data/gepa/evolve/eval-dataset.json` — 10 条 synthetic eval cases（scan/analyze/implement/watch/report/log/candidates/status/llm-judge/5-gates）
+  - `scripts/evolution/test-gepa.js` — **26/26 通过**（evaluator 7 + gates 7 + optimizer 6 + trace 4 + runner 1 + 新增 1）
+  - npm script：`gepa:evolve` / `gepa:dry` / `gepa:apply` / `gepa:test`
+- **接入**：`daily-evolution.js` 新增 `self-evolve` 子命令（`--skill --iterations --population --dry-run --apply`），不冲突现有 scan/analyze/implement
+- **试点 skill**：`evolve`（自我进化的元能力，进化它收益最大，且失败不影响核心功能）
+- **护栏**：所有候选必须通过 `constraint-gates.js` 5 道闸门 + fitness 必须 ≥ baseline 才能被采纳；`--apply` 才会覆盖原 SKILL.md，否则只输出报告供人工 review
+- **L5 影响**：填补"skill 自我进化"层闭环，配合现有 `/evolve`（外部学习）+ `/autonomous`（无人值守实施）形成三层智能演进：外部学习 → skill 自我优化 → 自主决策实施
+- **关联**：Hermes Agent Self-Evolution（外部借鉴）+ L4→L5 进化路径 + 04_自我演进路线.md 增量定义
+
 ### Fixed - SKILL.md 脚本路径错引用修复 + audit 工具正则升级（2026-06-27）
 
 - **痛点**：`/audit` 报告 6 项 P0 能力缺口 — `evolve` 和 `autonomous` SKILL.md 引用的脚本路径不存在

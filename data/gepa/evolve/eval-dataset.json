@@ -1,0 +1,98 @@
+{
+  "schema_version": "1.0",
+  "skill_name": "evolve",
+  "generated_at": "2026-06-28",
+  "description": "Synthetic eval cases for evolve skill optimization. Used by GEPA to evaluate candidate SKILL.md bodies.",
+  "evals": [
+    {
+      "id": "scan-command",
+      "input": "User wants to scan GitHub for new Claude projects",
+      "expected_actions": ["scan", "github", "trending"],
+      "keywords": ["scan", "github", "trending"],
+      "forbidden_actions": ["auto-implement", "merge"],
+      "category": "core-command",
+      "difficulty": "basic"
+    },
+    {
+      "id": "analyze-candidates",
+      "input": "User wants to evaluate candidate feasibility",
+      "expected_actions": ["analyze", "candidate", "score"],
+      "keywords": ["analyze", "candidate", "score", "feasibility"],
+      "forbidden_actions": [],
+      "category": "core-command",
+      "difficulty": "basic"
+    },
+    {
+      "id": "implement-feature",
+      "input": "User wants to implement a specific candidate",
+      "expected_actions": ["implement", "branch", "test"],
+      "keywords": ["implement", "branch", "test", "prompt"],
+      "forbidden_actions": ["push", "delete"],
+      "category": "core-command",
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "watch-status",
+      "input": "User wants to check if existing features are outdated",
+      "expected_actions": ["watch", "status", "outdated"],
+      "keywords": ["watch", "status", "outdated", "check"],
+      "forbidden_actions": [],
+      "category": "monitoring",
+      "difficulty": "basic"
+    },
+    {
+      "id": "report-trends",
+      "input": "User wants a trend report",
+      "expected_actions": ["report", "trend"],
+      "keywords": ["report", "trend", "log"],
+      "forbidden_actions": [],
+      "category": "monitoring",
+      "difficulty": "basic"
+    },
+    {
+      "id": "log-history",
+      "input": "User wants to see evolution history",
+      "expected_actions": ["log", "history"],
+      "keywords": ["log", "history", "evolution"],
+      "forbidden_actions": [],
+      "category": "monitoring",
+      "difficulty": "basic"
+    },
+    {
+      "id": "candidates-list",
+      "input": "User wants to view current candidates",
+      "expected_actions": ["candidates", "list"],
+      "keywords": ["candidates", "list", "view"],
+      "forbidden_actions": [],
+      "category": "core-command",
+      "difficulty": "basic"
+    },
+    {
+      "id": "status-check",
+      "input": "User wants to see implementation status",
+      "expected_actions": ["status"],
+      "keywords": ["status", "implementation", "done"],
+      "forbidden_actions": [],
+      "category": "monitoring",
+      "difficulty": "basic"
+    },
+    {
+      "id": "safety-llm-judge",
+      "input": "User wants to understand candidate safety mechanisms",
+      "expected_actions": ["LLM-judge", "safety", "threshold"],
+      "keywords": ["judge", "safety", "threshold", "闸门", "双轨制"],
+      "forbidden_actions": [],
+      "category": "advanced-feature",
+      "difficulty": "advanced"
+    },
+    {
+      "id": "five-gates",
+      "input": "User wants to know the 5 safety gates",
+      "expected_actions": ["gates", "失败保护", "干跑"],
+      "keywords": ["gates", "闸门", "失败保护", "干跑", "测试", "LLM-judge", "二次采样"],
+      "forbidden_actions": [],
+      "category": "advanced-feature",
+      "difficulty": "advanced"
+    }
+  ]
+}

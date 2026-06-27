@@ -1,0 +1,59 @@
+{
+  "skill": "evolve",
+  "timestamp": "2026-06-27T20:00:13.247Z",
+  "elapsed_sec": "0.02",
+  "baseline": {
+    "version": "1.0",
+    "composite": 0.56,
+    "fitness": {
+      "clarity": 0.5,
+      "coverage": 0.8,
+      "errorReduction": 0.5,
+      "sizeEff": 0.41
+    }
+  },
+  "candidate": {
+    "version": "1.1",
+    "composite": 0.56,
+    "fitness": {
+      "fitness": {
+        "clarity": 0.5,
+        "coverage": 0.8,
+        "errorReduction": 0.5,
+        "sizeEff": 0.41
+      },
+      "composite": 0.56
+    },
+    "validation": {
+      "allowed": true,
+      "score": 1,
+      "reasons": [],
+      "hardViolations": []
+    }
+  },
+  "improvement": 0,
+  "history": [
+    {
+      "generation": 0,
+      "meanFitness": 0.56,
+      "bestComposite": 0.56
+    },
+    {
+      "generation": 1,
+      "meanFitness": 0.56,
+      "bestComposite": 0.56
+    }
+  ],
+  "config": {
+    "population": 4,
+    "iterations": 2,
+    "eval_dataset_size": 10,
+    "trace_count": 0
+  },
+  "trace_patterns": {
+    "failurePatterns": [],
+    "successPatterns": [],
+    "totalFail": 0,
+    "totalSuccess": 0
+  }
+}

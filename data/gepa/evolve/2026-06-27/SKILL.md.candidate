@@ -1,30 +1,12 @@
 ---
 name: evolve
 displayName: 🧬 自我进化 — 从 GitHub 学新能力
-version: 1.0
+version: 1.1
 description: >
-  从 GitHub Trending + Search 扫描 Claude 相关爆款项目，TF-IDF + LLM-judge 评估
-  可行性，自动入队高价值候选到 evolution-plan.json，让 AiCode 持续长新技能。
-tags:
-  - evolution
-  - github-scanner
-  - candidate-evaluation
-  - auto-implement
-  - llm-judge
+tags: 
 author: 韩宗辉
 icon: 🧬
-gepa:
-  enabled: true
-  optimize_target: body
-  eval_dataset_source: synthetic
-  eval_dataset: data/gepa/evolve/eval-dataset.json
-  max_iterations: 5
-  population_size: 8
-  fitness_weights:
-    clarity: 0.30
-    coverage: 0.25
-    error_reduction: 0.25
-    size_eff: 0.20
+gepa: 
 ---
 
 # 🧬 自我进化 Skill
