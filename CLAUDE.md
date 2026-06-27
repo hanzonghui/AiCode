@@ -98,6 +98,7 @@ AiCode/
 |:-----------|:-----------|:-----|
 | `dispatcher.js` | 编排层 | 智能决定派不派子 Agent |
 | `swarm-coordinator.js` | 群体层 | 多 Agent 异构视角 + 投票汇总（v3.0.5 M31） |
+| `SKILL_INDEX.md` | 生态索引 | 1 张表查清 4 skill 边界 + 5 场景脚本（v3.0.5 M32） |
 | `left-brain` | 长期记忆 | 跨会话知识沉淀 |
 | `agent-reach` | 外部感知 | 13 平台互联网路由（GitHub/B站/V2EX/RSS/网页） |
 | MCP servers | 工具链 | 本地文件/数据库/网页能力 |

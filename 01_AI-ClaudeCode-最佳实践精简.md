@@ -133,6 +133,7 @@
 | **工作流建议** | `/workflow` / `/workflow learn` / `/workflow status` | session-init Step 9 自动展示"接下来该做什么" |
 | **工程自查/审计** | `/audit` 或 `npm run audit` | 6 段浅层报告（工程画像/已完成/未完成/缺口/重复/建议），可一键整合到 04 backlog（详见 02 §2.25） |
 | **多 Agent Swarm 协调** | `npm run swarm:demo` 或 `npm run swarm:run 任务 --n=3` | 多视角生成 + 投票汇总（v3.0.5 M31 POC），详见 02 §2.X |
+| **SKILL 生态索引** | 看 `.claude/SKILL_INDEX.md` | 4 skill（left-brain/audit/autonomous/evolve）总览 + 5 场景脚本（M32），0 启动成本 |
 | **handoff 接续（人工）** | `/handoff` 或 `node handoff.js`（无参数自动生成标题） | 上下文 40% 时 / 想换窗口 / 5 场景教程见 `.claude/handoff/TUTORIAL.md` |
 | **handoff 接续（VS Code 新窗口）** | `/handoff "..." --auto` | 开 VS Code 新窗口 + 复制启动命令到剪贴板（v3.0.4 M22） |
 | **handoff 接续（机器接续 runner）** | `/handoff "..." --runner` 或 `node handoff.js "..." --runner` | 离开时让 runner 循环跑（v3.0.5 M24-C） |

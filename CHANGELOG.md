@@ -31,6 +31,22 @@
 - **L5 影响**：用户/AI 看 SKILL.md 时不会被错路径误导；audit 工具正则支持跨 skill 引用 = L5 学习闭环更准
 - **关联**：M25 skill 升格（路径未同步）+ M18 GitHub token 认证（重命名测试）
 
+### Added - M32 SKILL 生态索引（SKILL_INDEX.md · 2026-06-27）
+
+- **痛点**：4 个 skill（left-brain / audit / autonomous / evolve）已饱和，但用户/AI 没有"1 张表查清"的总览入口
+  - 每次新会话都要翻 4 个 SKILL.md 自己拼 = 上下文浪费
+  - 缺少"推荐搭配"（哪个配哪个）+ "总调用例子"（典型 5 场景脚本）
+- **修复**：新增 `.claude/SKILL_INDEX.md`（~250 行 · v3.0.5）
+  - **4 skill 速览表**（一句话 + 入口命令 + 关键文件 + 学习成本）
+  - **每 skill 详解**：核心能力表 + 何时用 + 关键文件路径
+  - **5 个推荐场景**（日常 / 里程碑 / 学新能力 / 离开几小时 / 会话交接）= 可复制粘贴的 bash 脚本
+  - **L5 决策链闭环图**（user → evolve → queue-bridge → autonomous → audit + left-brain + auto-implement）
+  - **自检问题**（写新 skill 前 3 问）
+- **借鉴**：`davepoon/buildwithclaude` (7.3/10) 思路——"Claude skill 中心站"——但**本地化**：只列本工程 4 skill + 配套脚本，不依赖外部 GitHub
+- **决策依据**：当前 4 skill 已饱和，下一 skill 候选只从 audit/evolve 报告产生，不主动设计
+- **L5 影响**：用户/AI 上手 4 skill 路径缩短 30 min → 5 min（看 1 张表 vs 翻 4 个 SKILL.md）
+- **关联**：M25 skill 升格（4 skill 完整）+ 04.md §0.5 L5 路径
+
 ### Added - M31 多 Agent Swarm 协调 POC（借鉴 ruvnet/ruflo · 2026-06-27）
 
 - **痛点**：AiCode dispatcher 只决定"派不派 + 派几个",派出去的 Agent 各自独立回答,没有"汇总 + 投票"机制。复杂任务单 Agent 视角容易盲。
