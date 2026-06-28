@@ -1,7 +1,7 @@
 # AiCode — Claude Code 客户端 Agent 增强工程
 
 > **v3.0.5** · 一个**会自己调度、自己记忆、自己审计、自己进化**的 Claude Code 工作空间。
-> **26+ 个测试文件 / 371+ 项断言全过**，L1→L5 5 级智能增量路径打通（L4 ✅ / L5 🟡 3/5）。
+> **26+ 个测试文件 / 404+ 项断言全过**，L1→L5 5 级智能增量路径打通（L4 ✅ / L5 🟡 3/5）。
 
 **定位**：我们**不增强 Claude 大模型本身**，而是增强 **Claude Code 客户端 Agent** —— 通过调度 / 记忆 / 工具 / 工作流 / 自动化，让同样的 Claude 模型发挥出 2-10 倍效率。
 
@@ -12,7 +12,7 @@
 ```bash
 git clone <your-fork>.git && cd AiCode
 bash .workspace/setup.sh     # 一键适配当前环境（生成 .workspace/workspace.env）
-npm test                     # 跑 26+ 个测试文件 / 371+ 项断言，确认环境正常
+npm test                     # 跑 26+ 个测试文件 / 404+ 项断言，确认环境正常
 ```
 
 然后启动 Claude Code：
@@ -37,6 +37,7 @@ claude
 | 🐝 **多 Agent Swarm** | 复杂任务多视角分析 + 投票汇总 | `swarm-coordinator` |
 | 🎯 **ARIS POC** | 6-state verdict 合约 + cross-model review loop + idea discovery | `aris-poc` |
 | 🧠 **Mem POC** | 跨会话智能压缩 + 按 query 注入最相关历史事件 | `mem-poc` |
+| 🗂️ **Skill Hub** | 已装 + 本地 + 远程缓存三源聚合，统一搜索/推荐 skill | `skill-hub` |
 | 📋 **会话交接** | 上下文 40% 时一键 `/handoff` 换窗口 | `handoff` |
 | 📊 **效果量化** | 月度报告：耗时 / 成功率 / KB 召回 / 人工干预 | `metrics` |
 | 🛡️ **自动收尾** | 改完代码自动测试 + 快照 + KB + 6 文档同步 | `self-discipline` |

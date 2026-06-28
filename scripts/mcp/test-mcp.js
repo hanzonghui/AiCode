@@ -70,8 +70,12 @@ async function testServer(name, command, args, testFn) {
   const dbPath = path.join(root, 'data/workspace.db');
   // 测试 P0-3：父目录不存在时应自动创建
   const dbDir = path.dirname(dbPath);
-  if (fs.existsSync(dbDir)) {
-    fs.rmSync(dbDir, { recursive: true, force: true });
+  // Windows 上 rmSync 整个 data 目录可能 EPERM，只删测试 db 文件
+  if (fs.existsSync(dbPath)) {
+    fs.unlinkSync(dbPath);
+  } else if (fs.existsSync(dbDir)) {
+    // 如果 db 文件不存在但目录存在，确保目录干净（不删目录本身）
+    try { fs.rmSync(dbDir, { recursive: true, force: true }); } catch { /* ignore */ }
   }
 
   await testServer(
