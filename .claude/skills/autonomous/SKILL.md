@@ -19,7 +19,7 @@ icon: 🤖
 
 > **v1.0 · single / always / on / off · 状态机驱动 · 快照保护**
 
-（v1.0 起 `/autonomous` 不再支持无参 toggle；内部 `toggle()` 函数仍保留供脚本调用。）
+`/autonomous` 无参数时会弹出选择框（`single` / `always` / `on` / `off`）；也支持直接传参。内部 `toggle()` 函数仍保留供脚本调用。
 
 ---
 

@@ -5,7 +5,7 @@
 >
 > 🚨 **最高指令（2026-06-24）**：本工程的核心目标是 **智能演进**（围绕 04 纲领 4 大智能增量 L1→L5 路径）。git 管理 / 多用户 / 权限 / 审计 / 团队产品化等**均非核心**。评估任何新功能/任务时，先问"这能帮 Claude 变智能吗？"→ 否则降级或拒绝。详见 `.claude/memory/priority-intelligent-evolution.md`。
 >
-> 🚀 **自主模式（v2.2.0）**：运行 `npm run autonomous` 弹出方向键菜单（↑↓ 选择，↵ 确认），或手动执行 `/autonomous single`（完成一个阶段后自动停止）/ `/autonomous always`（循环执行阶段）让 Claude 自主决策开发。关闭用 `/autonomous-stop`。详见 `04_自我演进路线.md` 顶部"🚀 自主演进模式"段。
+> 🚀 **自主模式（v2.2.0）**：运行 `npm run autonomous` 弹出方向键菜单（↑↓ 选择，↵ 确认），或执行 `/autonomous`（无参弹出选择框）/ `/autonomous single/always/on/off` 让 Claude 自主决策开发。关闭用 `/autonomous-stop`。详见 `04_自我演进路线.md` 顶部"🚀 自主演进模式"段。
 
 ---
 
@@ -174,7 +174,7 @@ AiCode/
 | **ARIS POC** | `npm run aris-poc:demo` 或 `aris-poc:review -- --file foo.js` |
 | **Mem POC** | `npm run mem-poc:demo` 或 `mem-poc:inject "PowerShell 中文乱码"` |
 | **Skill Hub** | `npm run skill-hub:demo` 或 `skill-hub:search "chart"` |
-| **自主模式** | `npm run autonomous`（↑↓ 选择，↵ 确认）或 `/autonomous single/always` |
+| **自主模式** | `npm run autonomous`（↑↓ 选择，↵ 确认）<br>或 `/autonomous`（无参弹出选择框）<br>或 `/autonomous single/always/on/off` |
 
 > **2026-06-25 调整（B 方案）**：3 文件职责正交化——
 > - **CLAUDE.md** = 启动导航（启动协议 / 工作空间结构 / 规则文件清单 / 核心定位）

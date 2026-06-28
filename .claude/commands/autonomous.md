@@ -1,6 +1,6 @@
 ---
 name: autonomous
-description: 开启自主演进模式（v2.0 P0-1）—— 开关 ON 后 Claude 自主决策开发，不逐步确认。支持 single（完成一个阶段后自动停止）和 always（循环执行阶段）两种模式
+description: 开启自主演进模式（v2.0 P0-1）—— 开关 ON 后 Claude 自主决策开发，不逐步确认。无参数时弹出选择框，可选 single/always/on/off/status；也支持直接传参
 ---
 
 打开**自主模式开关**。开关 ON 期间，Claude 会：
@@ -9,14 +9,24 @@ description: 开启自主演进模式（v2.0 P0-1）—— 开关 ON 后 Claude 
 - 关键决策点**写入快照**而不是问
 - 完成后**自动 commit**（如果安全）
 
-## 两种模式
+## 行为逻辑
 
-| 模式 | 含义 |
-|:-----|:-----|
-| **single** | 完成**当前一个阶段**后自动停止，关闭开关 |
-| **always** | 完成一个阶段后**自动开启新阶段**，循环执行 |
+- 如果用户直接带参数（`single` / `always` / `on` / `off` / `status`），立即执行对应操作
+- 如果用户只输入 `/autonomous`（即 `<command-message>` 为 `autonomous` 且不含额外参数），使用 `AskUserQuestion` 工具弹出选择框，让用户选择模式
 
-## 交互式菜单（推荐）
+## 交互式选择（无参数时）
+
+当 `<command-message>` 为空时，调用 `AskUserQuestion` 工具，提供以下选项：
+
+| 选项 | 对应操作 |
+|:-----|:---------|
+| **single** | 运行 `npm run autonomous:single` |
+| **always** | 运行 `npm run autonomous:always` |
+| **on** | 运行 `npm run autonomous:on` |
+| **off** | 运行 `npm run autonomous:off` |
+| **status** | 运行 `npm run autonomous:status` |
+
+## 终端方向键菜单（推荐）
 
 ```bash
 npm run autonomous
@@ -34,7 +44,7 @@ npm run autonomous
 
 选择 `single` 或 `always` 后会**自动启动 runner**；选择 `on`/`off` 只切换开关。
 
-## 命令行用法
+## 显式命令用法
 
 ```bash
 # single 模式：设置开关为 single
@@ -63,6 +73,8 @@ npm run autonomous:status
 
 # 关闭
 /autonomous-stop
+# 或
+npm run autonomous:off
 ```
 
 ## 行为对比

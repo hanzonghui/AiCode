@@ -21,11 +21,12 @@
   - 选择 `on` → 只开开关（默认 always，不启动 runner）
   - 选择 `off` → 关闭开关
   - 非 TTY 环境自动回退到命令提示
+  - `/autonomous` slash 命令无参时改为弹出 Claude Code 选择框（`AskUserQuestion`），可选 `single/always/on/off`
 - **npm scripts**：
   - `npm run autonomous` 调出交互菜单（新增）
   - 原有 `autonomous:single` / `autonomous:always` / `autonomous:on` / `autonomous:off` / `autonomous:status` 保持不变
 - **测试**：新增 `scripts/orchestrator/test-autonomous-menu.js`，`npm run test:autonomous` **64/64 + 12/12 + 6/6 全过**
-- **文档同步**：更新 `01.md` §三、`02.md` §现状速览、`CLAUDE.md` 快速操作、`PROJECT-CONTEXT.md` 核心系统表、`04.md` 能力状态
+- **文档同步**：更新 `01.md` §三、`02.md` §现状速览、`CLAUDE.md` 快速操作、`PROJECT-CONTEXT.md` 核心系统表、`04.md` 能力状态、`SKILL.md` 命令入口说明
 - **关联**：`.claude/commands/autonomous.md` / `.claude/skills/autonomous/SKILL.md`
 
 ### Fixed - M38.1 自主模式无参入口绑定 toggle 导致用户无法触发 always（2026-06-28）

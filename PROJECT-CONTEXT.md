@@ -21,7 +21,7 @@
 |:-----|:-----|:-------|:----:|
 | **🧠 left-brain** | `bash .claude/skills/left-brain/scripts/left-brain.sh remember/recall` | 跨会话记忆 + 知识图谱 + 语义搜索 + Token 监控 | L2 ✅ |
 | **🔍 audit** | `/audit` 或 `node scripts/orchestrator/audit/quick-audit.js` | 工程健康度自查（6 段浅层报告 + 4 维度 P0/P1/P2 建议）| L4 |
-| **🤖 autonomous** | `npm run autonomous`（↑↓ 方向键选择）或 `/autonomous single\|always` | 自主模式（4 种：single/always/on/off）+ 方向键交互菜单 | L5 ✅ |
+| **🤖 autonomous** | `npm run autonomous`（↑↓ 方向键选择）<br>或 `/autonomous`（无参弹出选择框）<br>或 `/autonomous single\|always\|on\|off` | 自主模式（4 种：single/always/on/off）+ 方向键/选择框交互菜单 | L5 ✅ |
 | **🧬 evolve** | `/evolve run\|scan\|analyze\|candidates\|implement` | GitHub 扫描 + TF-IDF + LLM-judge + 入队 | L4 ✅ |
 | **🐝 swarm** | `npm run swarm:demo` 或 `npm run swarm:run 任务 --n=3` | 多 Agent 异构视角 + 投票汇总（M31 POC）| L5 |
 | **📊 metrics** | `node scripts/orchestrator/metrics/report.js` | 月度报告（4 指标：耗时/成功率/KB 召回/人工干预）| L4 |

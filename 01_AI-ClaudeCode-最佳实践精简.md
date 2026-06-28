@@ -214,7 +214,7 @@
 | **cron 主动报告** | `scripts/orchestrator/proactive/cron-report.js` | 日报 9:37 / 周报周一 9:42，delta 计算 + 历史裁剪，54/54 测试 |
 | **LLM 辅助 auto-fix** | `scripts/orchestrator/proactive/llm-fix-advisor.js` | test-coverage / deps-outdated / candidate-pending 加 LLM 建议（`--llm` flag），19+23 测试 |
 | **任务复杂度评分** | `dispatcher.js` v2.5.0+ | `scoreComplexity()` 0-10 数字 + 三档阈值（<4 不派 / 4-7 灰区 / >7 派），M10 接入 Agent 数量（1-3） |
-| **自主演进模式** | `npm run autonomous`（↑↓ 方向键选择，↵ 自动执行）<br>或 `/autonomous single\|always` | single 完成一个阶段后停，always 循环；5 道安全闸门 + 5 次失败上限，64+12+6 测试 |
+| **自主演进模式** | `npm run autonomous`（↑↓ 方向键选择，↵ 自动执行）<br>或 `/autonomous`（无参弹出选择框）<br>或 `/autonomous single\|always\|on\|off` | single 完成一个阶段后停，always 循环；5 道安全闸门 + 5 次失败上限，64+12+6 测试 |
 | **个人 workflow 智能化** | `scripts/orchestrator/workflow/*.js` | observer / pattern-miner / suggestion-engine 三层架构，`/workflow` 主动建议 |
 | **工程自查/审计** | `scripts/orchestrator/audit/quick-audit.js` | 6 个扫描器（profile / completed / unfinished / gaps / duplicates / suggestions），9/9 测试 |
 
