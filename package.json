@@ -134,11 +134,17 @@
     "mem-poc:demo": "node scripts/orchestrator/mem-poc.js demo",
     "mem-poc:inject": "node scripts/orchestrator/mem-poc.js inject",
     "test:mem-poc": "node scripts/orchestrator/test-mem-poc.js",
+    "test:security-skills-poc": "node scripts/security-skills-poc/test-security-skills-poc.js",
     "skill-hub": "node scripts/orchestrator/skill-hub-cli.js",
     "skill-hub:demo": "node scripts/orchestrator/skill-hub-cli.js demo",
     "skill-hub:search": "node scripts/orchestrator/skill-hub-cli.js search",
     "skill-hub:recommend": "node scripts/orchestrator/skill-hub-cli.js recommend",
-    "test:skill-hub": "node scripts/orchestrator/test-skill-hub.js"
+    "test:skill-hub": "node scripts/orchestrator/test-skill-hub.js",
+    "security-skills-poc": "node scripts/security-skills-poc/security-skills-poc.js",
+    "security-skills-poc:demo": "node scripts/security-skills-poc/security-skills-poc.js demo",
+    "security-skills-poc:cache": "node scripts/security-skills-poc/security-skills-poc.js cache",
+    "security-skills-poc:list": "node scripts/security-skills-poc/security-skills-poc.js list",
+    "security-skills-poc:search": "node scripts/security-skills-poc/security-skills-poc.js search"
   },
   "keywords": [
     "claude-code",

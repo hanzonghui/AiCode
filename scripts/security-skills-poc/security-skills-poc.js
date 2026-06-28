@@ -132,7 +132,7 @@ function cmdCache() {
   for (const skill of toCache) {
     const skillMdPath = path.join(skill.path, 'SKILL.md');
     try {
-      const content = ghRaw(skillMdPath);
+      const content = ghRawContent(skillMdPath);
       const outPath = getSkillPath(skill.name);
       ensureDir(path.dirname(outPath));
       fs.writeFileSync(outPath, content);
