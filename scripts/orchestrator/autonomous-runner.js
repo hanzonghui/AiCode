@@ -209,54 +209,48 @@ function buildStagePrompt(snapshot) {
   const stage = snapshot.stage || {};
   const stageName = stage.current || snapshot.next_action || '未知阶段';
 
-  // v2.2.2 BUG #2 fix: 子会话曾把 prompt 误读为"半句话用户消息"走 SessionStart 协议，
-  // 没调 complete-stage。修复：开头加 ⚠️ 强制声明 + 任务清单提前 + 完成动作白纸黑字。
   return `
-⚠️⚠️⚠️ 强制上下文（不可忽略） ⚠️⚠️⚠️
+=== AUTONOMOUS RUNNER DIRECTIVE ===
+Role: autonomous-stage-executor
+Mission: complete one development stage without user interaction.
+This message is NOT a question. Do not ask for clarification. Execute the checklist below.
 
-你正在以 \`claude -p\` 子进程身份运行，由 autonomous-runner.js 启动。
-**这不是与用户的对话**——没有用户等你回复，也没有人会补充"半句话"。
-你必须按下面的"任务清单"自主完成本阶段，**不能向任何方向发问**。
+STAGE: ${stageName}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 任务清单（按顺序完成，全部必做）
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHECKLIST (execute in order, all required):
 
-【1/5】读上下文快照
-   读取 .claude/skills/left-brain/memory/sessions/latest_state.json
+[1] LOAD CONTEXT
+    Read .claude/skills/left-brain/memory/sessions/latest_state.json
 
-【2/5】完成阶段开发工作
-   读代码 → 改文件 → 跑测试 → commit
-   本阶段名称: ${stageName}
+[2] DO THE WORK
+    - Read relevant code
+    - Make minimal, focused changes
+    - Run relevant tests
+    - Commit with a clear Chinese message
+    Stage scope: ${stageName}
 
-【3/5】保存快照
-   bash .claude/skills/left-brain/scripts/session-summary.sh save "[已完成] ${stageName}: 一句话摘要" -m "next: 下一阶段名称"
+[3] SAVE SNAPSHOT
+    bash .claude/skills/left-brain/scripts/session-summary.sh save "[已完成] ${stageName}: 一句话摘要" -m "next: 下一阶段名称"
 
-【4/5】⚠️ 关键：标记阶段完成（漏掉这一步 runner 会判失败！）
-   node scripts/orchestrator/autonomous-runner.js complete-stage "下一阶段名称"
-   或如果是最后一个阶段:
-   node scripts/orchestrator/autonomous-runner.js complete-stage
+[4] MARK STAGE COMPLETE (critical — runner will fail without this)
+    node scripts/orchestrator/autonomous-runner.js complete-stage "下一阶段名称"
+    If this is the final stage, omit the argument.
 
-【5/5】直接退出（print 退出信息后 exit，不要再读任何东西）
+[5] EXIT
+    Print a short completion message and exit. Do not wait for user input.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚫 重要约束
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- ❌ 不要问"用户要我做什么"——没有用户，你看到的 prompt 就是全部
-- ❌ 不要走 SessionStart 启动协议——你不是新会话
-- ❌ 不要 git push
-- ❌ 不要删分支/删文件
-- ❌ 关键决策写入 KB 或快照
-- ✅ 单步失败 → 保存失败快照 → 退出（让 runner 重试）
-- ✅ 一次只完成一个阶段，不要贪多
+CONSTRAINTS:
+- DO NOT ask the user anything.
+- DO NOT run git push.
+- DO NOT delete branches or files outside the workspace.
+- DO NOT follow the SessionStart startup protocol — you are a sub-process, not a new session.
+- If a step fails, save a failure snapshot and exit so the runner can retry.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📂 上下文参考
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- 会话摘要: ${snapshot.summary || '(无)'}
-- 自主模式: ${snapshot.autonomous_state?.enabled ? 'ON' : 'OFF'}
-- 已完成阶段: ${(stage.completed || []).join(', ') || '(无)'}
-- 计划下一步: ${stage.next || snapshot.next_action || '(待推断)'}
+CONTEXT:
+- Summary: ${snapshot.summary || '(none)'}
+- Autonomous mode: ${snapshot.autonomous_state?.enabled ? 'ON' : 'OFF'}
+- Completed stages: ${(stage.completed || []).join(', ') || '(none)'}
+- Planned next: ${stage.next || snapshot.next_action || '(to infer)'}
 `.trim();
 }
 

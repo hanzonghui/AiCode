@@ -129,13 +129,13 @@ function testBuildStagePrompt() {
   assert(prompt.includes('session-summary.sh save'));
 
   // v2.2.2 BUG #2 fix: prompt 必须显式声明"非对话" + 强制任务清单 + 禁止问用户
-  assert(prompt.includes('⚠️'), '必须含 ⚠️ 警告标记');
-  assert(prompt.includes('claude -p'), '必须显式声明是 claude -p 子进程');
-  assert(prompt.includes('不能向任何方向发问'), '必须禁止向用户发问');
-  assert(prompt.includes('不要走 SessionStart'), '必须禁止走 SessionStart 启动协议');
-  assert(prompt.includes('【1/5】') && prompt.includes('【5/5】'), '必须含 5 步任务清单');
-  // 关键步骤（第 4 步）必须标记为关键
-  assert(prompt.includes('【4/5】⚠️ 关键'), '第 4 步（complete-stage）必须标关键');
+  assert(prompt.includes('AUTONOMOUS RUNNER DIRECTIVE'), '必须含指令标题');
+  assert(prompt.includes('Do not ask for clarification'), '必须禁止向用户发问');
+  assert(prompt.includes('not a new session'), '必须禁止走 SessionStart 启动协议');
+  assert(prompt.includes('[1]') && prompt.includes('[5]'), '必须含 5 步任务清单');
+  // 关键步骤（第 4 步）必须标记为 critical
+  assert(prompt.includes('critical'), '第 4 步（complete-stage）必须标 critical');
+  assert(prompt.includes('runner will fail without this'), '必须强调 complete-stage 重要性');
 
   console.log('✅ buildStagePrompt (含 BUG #2 修复验证)');
 }
