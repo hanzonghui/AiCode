@@ -112,3 +112,6 @@ data/evolution/auto-tasks.json
 
 # M16 候选汇聚桥梁产物（v3.0.1）
 data/bridge/
+
+# M36A ui-skill-installer 离线缓存（每次扫描 GitHub 刷新，不入库）
+.claude/skills/ui-skill-installer/memory/
