@@ -10,6 +10,32 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Added - asgeirtj 语料库接入 + cowork-dispatch 借鉴评估（2026-06-28）
+
+- **背景**：用户问 `asgeirtj/system_prompts_leaks` 价值，评估为"挖语料不当 skill"。这是 L4 学习闭环的官方对齐机会——仓库 46,778⭐、CC0 license、165+ 真实 SOTA 产品 system prompt（含 Anthropic Claude Fable 5/Opus 4.8/Code/Cowork、OpenAI GPT-5.5、Cursor/Copilot 等）。
+- **本阶段动作**：
+  - **新增 `data/corpus/system-prompts/`** — `gh repo clone --depth 1` 完整 clone 8.26MB，14 个厂商目录
+  - **新增 `.gitignore` + `.claudeignore` 规则** — `data/corpus/` 双 ignore（防误 commit + 防 SessionStart 误读污染 context）
+  - **新增 KB 条目 `cowork-dispatch-memory-pattern-2026.md`** — 通读 `Anthropic/claude-cowork-dispatch.md` 提炼 3 个可借鉴模式：
+    1. **Dispatcher 严格只路由不做任务** — 对应 autonomous-runner vs swarm-coordinator 边界审计
+    2. **auto-memory 规范 5/7 对齐 left-brain** — 缺"What NOT to save 完整列表"+"Before recommending 3 条验证"两项
+    3. **MEMORY.md 200 行截断** — 当前 16 行远未到，但应提前加监控
+  - **MEMORY.md 索引追加** — cowork-dispatch 借鉴 KB + kangarooking 划走 KB
+- **测试结果**：N/A（本阶段仅语料接入 + 文档沉淀，未改主代码）
+- **L5 影响**：
+  - **L4 学习闭环 ↑**：获得 165+ 正例样本库，未来可强化 M12 LLM-judge 评分
+  - **left-brain 7 项规范 5/7 对齐** = 一次官方对齐机会，2 项可低成本补齐（KB 条目内已列出，作为未来增量候选）
+- **关联**：`data/corpus/system-prompts/` (8.26MB) · `cowork-dispatch-memory-pattern-2026.md` · `kangarooking-system-prompt-skills-skipped.md`
+
+### Files - asgeirtj 语料库接入
+
+- `data/corpus/` (新) — asgeirtj/system_prompts_leaks clone，gitignore 排除
+- `.gitignore` (改) — 第 122 行新增 `data/corpus/`
+- `.claudeignore` (改) — 末尾新增 `data/corpus/`
+- KB `cowork-dispatch-memory-pattern-2026.md` (新) — 3 借鉴模式 + 划界
+- KB `kangarooking-system-prompt-skills-skipped.md` (新) — 划走原因
+- `MEMORY.md` (改) — 索引追加 2 条
+
 ### Added - AUDIT-roadmap-item-skill：/go skill 升格（M43 · v3.0.5 · 2026-06-28）
 
 - **背景**：`/audit` 浅层报告 P2 长期挂着"扩展 skill 生态"项（2026-06-26 research-skill-ecosystem 报告 P2 推荐路径 Step 3-5），`/go` 是 25 个命令中**唯一**描述了完整 4 阶段流水线（测试→简化→审查→提交）但**没有真实脚本**的命令 — 此前只是 markdown 模板，靠 Claude 在上下文里"记得跑"

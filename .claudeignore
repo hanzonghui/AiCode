@@ -47,3 +47,6 @@ target/
 # 进化系统原始数据（量大，按需读）
 data/github/trending.json
 data/github/candidates.json
+
+# 外部语料库（按需手动 clone + 按文件读，量大 8MB+）
+data/corpus/
