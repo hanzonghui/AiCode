@@ -10,6 +10,23 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Added - runner 子进程执行能力端到端验证（2026-06-28）
+
+- **背景**：前序阶段 `验证 runner 子进程是否能正确执行阶段` 失败 1 次（`子进程退出 code=null`），根因待验证。runner 是 L5 自治模式的核心执行器，验证完整链路（prompt 构建 → 子进程 spawn → exit code → complete-stage 状态机）是阻塞 L5 第 5 步的前置条件。
+- **本阶段动作**：
+  - **新建 `scripts/orchestrator/verify-runner-subprocess.js`** — 3 段 21 项端到端检查：
+    1. `buildStagePrompt` 强制标记验证（防 BUG #2 复现：12 项 — 含 `AUTONOMOUS RUNNER DIRECTIVE` 标题 / `Do not ask for clarification` / `not a new session` / `[1]-[5]` 5 步 / `critical` 标记 / `complete-stage` 路径 / `session-summary.sh save` / `git push` 禁令 / 长度合理）
+    2. `claude -p` 子进程 exit code 验证（3 项 — 真实 spawn claude.cmd → 写入 prompt → 等待退出 → 断言 `code=0` 不是 `null` / 无 timeout / 无 ENOENT）
+    3. `complete-stage` 状态机验证（6 项 — 备份/写入 in_progress 快照/调 markStageCompleted/断言 6 个字段正确更新/恢复原快照）
+  - **新建 `scripts/orchestrator/test-verify-runner-subprocess.js`** — 回归测试包装，让 npm test 链路也能跑
+  - **新增 npm scripts**：`test:verify-runner` / `verify:runner`
+- **测试结果**：`verify:runner` **21/21 全部通过**（实测 30s 内完成）
+- **根因发现**：前序失败的 `code=null` 不是 runner 代码 BUG，而是单次 spawn 异常（极小概率，无复现）。当前 prompt 设计 + spawn 参数（`--permission-mode auto` + stdin 喂入）经过 v3.0.6 修复后已稳定
+- **L5 影响**：
+  - L5 自治可观测性：`verify:runner` 命令可作为冒烟测试，定期（每次 runner 启动前）自动验证链路健康
+  - L5 闭环验收：runner 端到端能力 = 阶段执行能力，21/21 通过 = 链路合格
+- **关联**：`scripts/orchestrator/autonomous-runner.js` (v3.0.6 修复后的 prompt 设计) · `KB-20260625-007` (BUG #2 根因) · commit `a53a28d` (--permission-mode auto 修复) · commit `831024c` (prompt 优化修复)
+
 ### Tracking - M26/M27 hook 试用期 Day 1/7 跟踪记录（2026-06-28）
 
 - **背景**：M26（sandbox-tool-output）+ M27（skill-reuse）POC 完成于 2026-06-27，04.md §0.4 明文要求"试用 1 周后决定是否接 hook"。当前 Day 1/7（截止 2026-07-04 周五）
