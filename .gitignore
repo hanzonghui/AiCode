@@ -115,3 +115,6 @@ data/bridge/
 
 # M36A ui-skill-installer 离线缓存（每次扫描 GitHub 刷新，不入库）
 .claude/skills/ui-skill-installer/memory/
+
+# M36B skill-registry 离线缓存 + 运行时状态（每次 install 变化，不入库）
+data/skill-registry/
