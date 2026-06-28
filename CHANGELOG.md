@@ -10,6 +10,41 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Added - M38 ARIS POC：借鉴 wanshuiyin/ARIS 实现 review-loop + idea-discovery + 6-state verdict（2026-06-28）
+
+- **痛点**：当前 ai-implement / self-reflect / M12 LLM-judge / M31 swarm 各自定义 verdict 字段（accept/reject/pass/fail/score 1-10），调用方要写多份 if/else 适配；用户写完代码/文档后没人 review 容易出问题；候选/idea 排序靠人工主观
+- **目标**：借鉴 ARIS（`Auto-Research-In-Sleep`，12.7k⭐ / 1159 forks）核心 3 个能力，本地化做 Node.js 纯函数 POC
+- **已实现**（5 模块 / 95/95 测试 / `scripts/aris-poc/`）：
+  - `scripts/aris-poc/verdict.js` — 6 状态合约核心：normalizeVerdict（自动归一 ARIS 别名 `ready`/`almost`/`not_ready` + OpenAI `accept`/`reject` + 业内 `pass`/`fail`）+ makeVerdict 工厂 + isPositive 双条件 + aggregateVerdicts 5 策略（unanimous/majority/any/best_of/worst_of）+ nextAction 推荐 + formatVerdict
+  - `scripts/aris-poc/review-loop.js` — 5 个 preset reviewer（correctness/security/style/performance/maintainability）+ runReviewLoop 主循环（maxRounds 默认 4，POSITIVE_THRESHOLD=6 双条件终止）+ REVIEW_STATE.json 持久化 + formatReport Markdown
+  - `scripts/aris-poc/idea-discovery.js` — scoreIdea 5 维加权评分 + discoverIdeas 批量排序 + 4 级 label（STRONG≥8 / RECOMMENDED≥6 / BACKUP≥4 / ELIMINATED<4）+ duplicateOf 自动淘汰 + formatReport Markdown
+  - `scripts/aris-poc/aris-poc.js` — CLI（review / idea / verdict / demo 子命令）
+  - `scripts/aris-poc/test-aris-poc.js` — **95/95 测试通过**（verdict 35 + review-loop 12 + idea-discovery 15 + CLI 集成 9 + positive 字段派生 + 边界）
+- **npm scripts**：`aris-poc` / `aris-poc:demo` / `aris-poc:review` / `aris-poc:idea` / `test:aris-poc`
+- **真实 demo 跑通**（`npm run aris-poc:demo`）：
+  - 6-state verdict 全部正确（PASS=accept / WARN=continue / FAIL=fix / BLOCKED=escalate / ERROR=retry / NA=skip）
+  - cross-model review 真发现 review-loop.js 自身的 5 个弱点（eval() 危险 / innerHTML XSS / console.log 残留 / 命名混用 / TODO 标记）
+  - idea discovery 用 evolution-plan.json next 11 条候选评分 → wanshuiyin/ARIS 自身 **STRONG 8.64 排第 1**（与 GitHub 7.4/10 综合分交叉验证一致）
+- **安全边界**：纯函数 + 离线模式（reviewers 启发式 preset，不调真 LLM）+ **不接 hook**（避免误派）+ 试用 1 周再决定（与 M26/M27 节奏一致）
+- **关联**：M12 LLM-judge / M31 swarm / M14 知识图谱反哺形成"L4 决策链闭环"
+
+### Files - M38 新增/修改
+
+```
+scripts/aris-poc/verdict.js                (新增 200 行)
+scripts/aris-poc/review-loop.js            (新增 270 行)
+scripts/aris-poc/idea-discovery.js         (新增 240 行)
+scripts/aris-poc/aris-poc.js               (新增 230 行)
+scripts/aris-poc/test-aris-poc.js          (新增 280 行)
+package.json                               (新增 5 个 npm scripts + test 链追加)
+04_自我演进路线.md                          (新增 §0.4 M38 增量段 + §十二 ✅ 行 + 顶部最近一次同步)
+01_AI-ClaudeCode-最佳实践精简.md            (§三 速查表新增 ARIS POC 行)
+02_工作空间功能介绍.md                       (§2.32 新章节 + §现状速览表追加)
+CLAUDE.md                                  (核心能力表新增 aris-poc 行)
+PROJECT-CONTEXT.md                          (核心系统 13→14 + 常用命令 13→14 + 版本说明)
+CHANGELOG.md                               (本段)
+```
+
 ### Added - M36A ui-skill-installer 一键安装 shadcn+Tailwind+v0 模板（2026-06-28）
 
 - **痛点**：手工 `npx create-next-app` + 装 shadcn 组件（30+ 分钟）；去 GitHub 翻别人 starter（5-15 分钟找 + 10 分钟理解 + 改）

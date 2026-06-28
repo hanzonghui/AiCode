@@ -110,6 +110,7 @@ AiCode/
 | `agent-reach` | 外部感知 | 13 平台互联网路由（GitHub/B站/V2EX/RSS/网页） |
 | **`ui-skill-installer`** (M36A) | **UI 模板脚手架** | **5 场景（landing/dashboard/chat/admin/portfolio）+ shadcn+Tailwind+v0，30 秒得到 Next.js 15 脚手架** |
 | **`skill-registry`** (M36B+C) | **skill 自动发现+安装** | **GitHub 3 仓 + npm 20+ 关键词 + 5 维评分 ≥ 7.0 + 路径穿越防护 + 营销号过滤（M37 doc-sync 8 文档补漏）** |
+| **`aris-poc`** (M38) | **ARIS 借鉴 + 6-state verdict** | **借鉴 wanshuiyin/ARIS：6-state verdict 合约 + cross-model review loop（5 视角）+ idea discovery（5 维评分 + Top-K）+ CLI（npm run aris-poc:demo）** |
 | MCP servers | 工具链 | 本地文件/数据库/网页能力 |
 | `hooks/` | 环境集成 | 自动执行启动/停止逻辑 |
 | `自我约束规范.md` | 工作流 | 改完代码自动收尾 |

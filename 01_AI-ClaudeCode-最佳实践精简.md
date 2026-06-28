@@ -139,6 +139,7 @@
 | **SKILL 自我进化（GEPA）** | `/evolve self-evolve` 或 `npm run gepa:evolve` | 借鉴 Hermes GEPA 思路，基于 execution traces 自动迭代 SKILL.md（M34 · 加 `--apply` 才覆盖），详见 02 §2.X |
 | **UI 模板一键安装** | `/ui-install "做 SaaS 后台"` 或 `npm run ui-install` | 30 秒得到 Next.js 15 + shadcn + Tailwind v4 + AI SDK 脚手架（v3.0.5 M36A），详见 02 §2.X |
 | **skill 一键安装** | `/skill-install "加 chart 能力"` 或 `npm run skill-install` | 自动扫 GitHub 3 仓 + npm 关键词 + 5 维评分 ≥ 7.0 + 路径穿越防护（v3.0.5 M36B+C · M37 8 文档补同步），详见 02 §2.X |
+| **ARIS POC** | `npm run aris-poc:demo` 或 `aris-poc:review -- --file foo.js` 或 `aris-poc:idea -- --json candidates.json` | 借鉴 wanshuiyin/ARIS：6-state verdict 合约 + cross-model review loop（5 视角）+ idea discovery（5 维评分 + Top-K）（v3.0.5 M38），详见 02 §2.32 |
 | **文档基线** | 看 `README.md` + `PROJECT-CONTEXT.md` | v3.0.5 用户首看 + session-init 自动加载（M33 重写，告别 v2.0.0 / v1.9 过期）|
 | **handoff 接续（推荐 · 一键接续）** | `/handoff` 或 `node handoff.js` | 上下文 40% 时 / 想换窗口 / 5 场景教程见 `.claude/handoff/TUTORIAL.md`（自动复制启动命令到剪贴板 + 打印接续 prompt，由你决定怎么打开）|
 | **handoff 接续（VS Code 新窗口）** | `/handoff "..." --auto` | 开 VS Code 新窗口 + 复制启动命令到剪贴板（v3.0.4 M22） |

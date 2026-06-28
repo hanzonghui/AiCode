@@ -2,7 +2,7 @@
 
 > **用途**：新会话启动时自动加载（`session-init.sh` top-list 包含本文件），快速建立项目心智模型，避免扫描整个仓库浪费 token。
 > **更新时间**：2026-06-28
-> **版本**：v3.0.5（M25~M35 · 4 skill 升格 + swarm 协调 + SKILL 索引 + README/PROJECT-CONTEXT 重写 + doc-sync v3 8 文档 + GEPA skill 自我进化 + 扫描盲区解决）
+> **版本**：v3.0.5（M25~M38 · 4 skill 升格 + swarm 协调 + SKILL 索引 + README/PROJECT-CONTEXT 重写 + doc-sync v3 8 文档 + GEPA skill 自我进化 + 扫描盲区解决 + 一键安装 UI/skill + ARIS POC）
 > **加载方式**：session-init 自动加载（≈ 100 行 · token 友好）
 
 ---
@@ -15,7 +15,7 @@
 
 ---
 
-## 13 个核心系统
+## 14 个核心系统
 
 | 系统 | 入口 | 一句话 | 阶段 |
 |:-----|:-----|:-------|:----:|
@@ -33,6 +33,7 @@
 | **🧬 gepa** | `npm run gepa:evolve` 或 `node scripts/evolution/daily-evolution.js self-evolve` | SKILL.md 自我进化（5 模块 + 5 道护栏 + 26/26 测试，借鉴 Hermes GEPA）| L4 |
 | **🎨 ui-skill-installer** (M36A) | `/ui-install` 或 `npm run ui-install` | 5 场景 UI 模板脚手架（landing/dashboard/chat/admin/portfolio + shadcn+Tailwind+v0）| L4 ✅ |
 | **📦 skill-registry** (M36B+C) | `/skill-install` 或 `npm run skill-install` | skill 自动发现+安装（GitHub 3 仓 + npm 20+ 关键词 + 5 维评分 ≥ 7.0 + 路径穿越防护 + 营销号过滤）| L4 ✅ |
+| **🎯 aris-poc** (M38) | `npm run aris-poc:demo` 或 `aris-poc:review` / `aris-poc:idea` | 借鉴 wanshuiyin/ARIS：6-state verdict 合约 + cross-model review loop（5 视角）+ idea discovery（5 维评分 + Top-K），95/95 测试 | L4 |
 
 ---
 
@@ -69,7 +70,7 @@ AiCode/
 
 ---
 
-## 13 个常用命令
+## 14 个常用命令
 
 ```bash
 # 测试（30+ 文件 / 300+ 断言全过）
@@ -90,6 +91,12 @@ npm run gepa:evolve                 # SKILL 自我进化（GEPA · M34）
 /ui-install "做 SaaS 后台"          # 30 秒得到 Next.js 15 + Tailwind 脚手架（M36A）
 /skill-install "加 chart 能力"       # 自动评分 + 安装到 .claude/skills/（M36B+C）
 npm run ui-install / skill-install  # CLI 入口
+
+# ARIS POC（M38）
+npm run aris-poc:demo               # 6-state verdict + cross-model review + idea discovery 完整 demo
+npm run aris-poc:review -- --file foo.js   # 对任意文件跑 cross-model review loop
+npm run aris-poc:idea -- --json candidates.json   # 从 JSON 候选发现 Top-K
+npm run test:aris-poc               # 95/95 测试
 
 # 会话交接（M21-M29）
 /handoff                            # 无参数自动生成标题 + 下一阶段
