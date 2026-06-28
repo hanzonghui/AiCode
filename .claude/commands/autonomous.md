@@ -68,8 +68,6 @@ npm run autonomous:status
 ```bash
 /autonomous-stop
 # 或
-/autonomous toggle
-# 或
 npm run autonomous:off
 ```
 
