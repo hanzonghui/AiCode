@@ -10,6 +10,20 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Added - M45 KB 分类质量提升（2026-06-29）
+
+- **背景**：71 条 KB 中 49.3% 标"其他"（35 条）+ 20 条无 frontmatter 纯文本 → L5 第 3 条「自治可观测」的命中率数据基础是噪声，无法信任。
+- **本阶段动作**：
+  - **新增 `scripts/knowledge/auto-classify.js`** — 编码检测（utf8 / gb18030）+ 9 类分类规则（偏好/决策/事件/人物/工程经验/概念澄清/技术/bug_fix/feature_full）+ CLI 4 子命令（report / dry-run / apply / detect-encoding）
+  - **新增 `scripts/knowledge/enrich-kb.js`** — 把 20 条无 frontmatter 的纯文本 KB（`[KB-YYYYMMDD-NNN] 内容` 格式）补上 frontmatter
+  - **新增 `scripts/knowledge/restore-plain-kb.js`** — enrich 出错时还原 20 条原始纯文本（应急工具）
+  - **新增 `scripts/orchestrator/test-auto-classify.js`** — 24/24 通过（编码检测 3 + parseKB/rebuildKB 2 + 9 类规则 11 + enrich 解析 3 + L5 数据真实性 5）
+  - **npm 4 scripts** — `kb:classify` / `kb:report` / `kb:enrich` / `test:auto-classify`
+  - **test 主链追加 `test:auto-classify`** — 纳入 npm test 全量回归
+  - **真实效果**：71 条 KB 从「其他 49.3%」降为「其他 4.2%」（远超 20% 目标）；8 类清晰：决策 18 / feature_full 18 / 工程经验 15 / 事件 10 / bug_fix 4 / 偏好 2 / 技术 1
+- **commit**：`6b24bce`
+- **L5 影响**：第 3 条「自治可观测」的数据基础从噪声变信号；月报「命中率 / 分类质量」可信
+
 ### Added - x1xhlol IDE Agent 按需评估 + auto-perceive 规则补完（2026-06-28）
 
 - **背景**：用户问 `x1xhlol/system-prompts-and-models-of-ai-tools` 价值（141k⭐，GPL-3.0，30+ IDE Agent 语料）。与 asgeirtj (chat 产品) 互补（IDE Agent 方向），按"按需抓不 clone"策略读 3 个核心 prompt。
