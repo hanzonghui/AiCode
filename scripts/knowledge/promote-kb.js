@@ -17,7 +17,8 @@
  * 用法：
  *   node promote-kb.js --report              # 看哪些 KB 达到毕业条件
  *   node promote-kb.js --dry-run             # 输出将做的动作，不写文件
- *   node promote-kb.js --apply               # 实际执行（默认缩为 pointer，配置 --delete 改为删除源）
+ *   node promote-kb.js --apply               # 实际执行（需 --yes 确认，否则交互式 yes）
+ *   node promote-kb.js --apply --yes         # 直接执行（CI / 自主模式用，无交互）
  *   node promote-kb.js --apply --delete      # 升 docs 后删源（不留 pointer）
  *   node promote-kb.js --apply --target docs # 升 docs/02.md（默认升 CLAUDE.md）
  *   node promote-kb.js --kb KB-20260629-001  # 只对单条操作
@@ -222,7 +223,7 @@ function cmdReport() {
   return { toPromote, keep };
 }
 
-function cmdApply({ deleteSource = false, target = null, kbFilter = null }) {
+function cmdApply({ deleteSource = false, target = null, kbFilter = null, confirmed = false }) {
   const all = listAllKBs();
   const repeat = buildRepeatMap(all);
   const filtered = kbFilter ? all.filter(k => k.filePath.includes(kbFilter)) : all;
@@ -232,30 +233,96 @@ function cmdApply({ deleteSource = false, target = null, kbFilter = null }) {
   });
   const toPromote = judged.filter(k => k.shouldPromote);
 
-  console.log(`\n🔧 [DRY-RUN] 将对 ${toPromote.length} 条 KB 执行毕业:\n`);
+  if (toPromote.length === 0) {
+    console.log('\n✅ 没有 KB 达到毕业条件。\n');
+    return { toPromote, actionPlan: [] };
+  }
+
+  // 闸门：未确认时打印计划并要求 yes
+  if (!confirmed) {
+    console.log(`\n⚠️  将对 ${toPromote.length} 条 KB 执行毕业（缩源为 pointer，${deleteSource ? '删除源' : '保留源'}）:\n`);
+    for (const k of toPromote) {
+      console.log(`  → ${k.title}`);
+      console.log(`    升: ${k.promoteTarget}`);
+      console.log(`    源: ${deleteSource ? '删除' : '缩为 1 行 pointer'}`);
+      console.log(`    原因: ${k.reason}\n`);
+    }
+    console.log(`提示: 这是破坏性操作，请用 --yes 确认执行。\n`);
+    console.log(`      例: node promote-kb.js --apply --yes --target 02.md\n`);
+    return { toPromote, actionPlan: [], aborted: 'awaiting-confirm' };
+  }
+
+  // 实际执行：缩源为 pointer + 追加到 docs/目标文件
+  console.log(`\n🔧 实际执行毕业（${toPromote.length} 条）:\n`);
+  const actionPlan = [];
+  for (const k of toPromote) {
+    try {
+      shrinkKB(k, deleteSource);
+      actionPlan.push({ ...k, action: deleteSource ? 'delete' : 'shrink' });
+      console.log(`  ✅ ${k.title} → ${k.promoteTarget} (${deleteSource ? '删除源' : '缩 pointer'})`);
+    } catch (err) {
+      console.error(`  ❌ ${k.title}: ${err.message}`);
+    }
+  }
+  console.log(`\n📊 完成: ${actionPlan.length}/${toPromote.length} 成功\n`);
+
+  return { toPromote, actionPlan };
+}
+
+/**
+ * 把 KB 缩为 1 行 pointer（不动 docs 目标文件 — docs 由 doc-sync 规则统一同步）
+ *
+ * pointer 格式：
+ *   <!-- KB-YYYYMMDD-NNN 已毕业 @ YYYY-MM-DD → docs/02.md -->
+ */
+function shrinkKB(kb, deleteSource) {
+  const pointerLine = `<!-- ${path.basename(kb.filePath, '.md')} 已毕业 @ ${new Date().toISOString().slice(0, 10)} → ${kb.promoteTarget} -->\n`;
+
+  if (deleteSource) {
+    fs.unlinkSync(kb.filePath);
+  } else {
+    fs.writeFileSync(kb.filePath, pointerLine);
+  }
+}
+
+/**
+ * dry-run：显示计划，不写任何文件
+ */
+function cmdDryRun({ deleteSource = false, target = null, kbFilter = null }) {
+  const all = listAllKBs();
+  const repeat = buildRepeatMap(all);
+  const filtered = kbFilter ? all.filter(k => k.filePath.includes(kbFilter)) : all;
+  const judged = filtered.map(kb => {
+    const r = judgePromote(kb, repeat);
+    return { ...kb, ...r, promoteTarget: target || PROMOTE_CONFIG.defaultTarget };
+  });
+  const toPromote = judged.filter(k => k.shouldPromote);
+
+  console.log(`\n🔍 [DRY-RUN] 将对 ${toPromote.length} 条 KB 执行毕业（不写文件）:\n`);
   for (const k of toPromote) {
     console.log(`  → ${k.title}`);
     console.log(`    升: ${k.promoteTarget}`);
-    console.log(`    源: ${deleteSource ? '删除' : '缩为 pointer'}`);
+    console.log(`    源: ${deleteSource ? '删除' : '缩为 1 行 pointer'}`);
     console.log(`    原因: ${k.reason}\n`);
   }
   if (toPromote.length === 0) {
     console.log('  （无）');
   }
-  console.log(`\n提示: 当前为 [DRY-RUN] 模式，不会真写文件。如确认执行，请去掉 --dry-run。\n`);
+  console.log(`\n提示: dry-run 不写文件。如确认执行: node promote-kb.js --apply --yes\n`);
 
-  return { toPromote, actionPlan: toPromote.map(k => ({ ...k, action: deleteSource ? 'delete' : 'shrink' })) };
+  return { toPromote, dryRun: true };
 }
 
 // ── CLI ──────────────────────────────────────────────
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { mode: null, deleteSource: false, target: null, kbFilter: null };
+  const opts = { mode: null, deleteSource: false, target: null, kbFilter: null, confirmed: false };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--report') opts.mode = 'report';
-    else if (args[i] === '--dry-run') opts.mode = 'apply';
+    else if (args[i] === '--dry-run') opts.mode = 'dry-run';
     else if (args[i] === '--apply') opts.mode = 'apply';
+    else if (args[i] === '--yes') opts.confirmed = true;
     else if (args[i] === '--delete') opts.deleteSource = true;
     else if (args[i] === '--target' && args[i + 1]) { opts.target = args[++i]; }
     else if (args[i] === '--kb' && args[i + 1]) { opts.kbFilter = args[++i]; }
@@ -268,6 +335,8 @@ function main() {
   const opts = parseArgs();
   if (opts.mode === 'report') {
     cmdReport();
+  } else if (opts.mode === 'dry-run') {
+    cmdDryRun(opts);
   } else if (opts.mode === 'apply') {
     cmdApply(opts);
   }
@@ -277,4 +346,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { parseKB, judgePromote, buildRepeatMap, listAllKBs, ageInDays, topicKey, PROMOTE_CONFIG };
+module.exports = { parseKB, judgePromote, buildRepeatMap, listAllKBs, ageInDays, topicKey, PROMOTE_CONFIG, parseArgs };
