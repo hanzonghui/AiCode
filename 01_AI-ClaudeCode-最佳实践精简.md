@@ -222,33 +222,6 @@
 | **任务复杂度评分** | `dispatcher.js` v2.5.0+ | `scoreComplexity()` 0-10 数字 + 三档阈值（<4 不派 / 4-7 灰区 / >7 派），M10 接入 Agent 数量（1-3） |
 | **自主演进模式** | `npm run autonomous`（↑↓ 方向键选择，↵ 自动执行）<br>或 `/autonomous`（无参弹出选择框）<br>或 `/autonomous single\|always\|on\|off` | single 完成一个阶段后停，always 循环；5 道安全闸门 + 5 次失败上限，64+12+6 测试 |
 
-### 🚀 自主模式 + handoff 高频场景（6 类用户路径 · v3.0.8）
-
-> **核心边界**：`/handoff` = **人工接续**（你下个会话手动接）· `/autonomous` = **机器接续**（AI 自动接力跑 next）
-
-| # | 你的场景 | 命令 | 关键认知 |
-|:-:|:---------|:-----|:---------|
-| **1** | **现在 23:00 还没干完，得睡觉** | `/handoff`（无参数，自动从摘要提标题）| 睡前跑 → 关电脑 → 明早 `cc` + 说"继续 X" 自动接续 |
-| **2** | **出去吃饭 1 小时** | `/autonomous single` | AI 跑完**当前 1 阶段**自动停，回来 `/status` 看 |
-| **3** | **周末出去爬山 1 天** | `/autonomous always` + 独立 PowerShell 跑 `npm run autonomous:runner` | runner 后台循环跑 next 队列，关窗口都行 |
-| **4** | **调试 BUG 调一半要开会** | `/handoff "BUG-X 根因在 Y 函数" "继续修 BUG-X"` | 显式标题带调试线索，新会话第一眼看到根因 |
-| **5** | **完成 v3.0.8 大版本** | `/handoff "v3.0.8 完成" --tags "milestone"` | 写 CHANGELOG `[v3.0.8]` 段 + tag 便于后续搜 |
-| **6** | **完成 1 个小修复，想看下一个** | **啥都不跑**，直接说"做 next[0]" | 人在场 + 想立刻继续 → `/status` + 自然语言最简 |
-
-**完整 4 步流程**（每个场景怎么做 → 怎么接续）见 [`.claude/rules/session-memory.md`](.claude/rules/session-memory.md) §"完整 4 步流程"段。
-
-> **6 条关键认知**：
-> 1. `/autonomous` **只是开关**，不是启动跑 —— runner 永远要手动 `npm run autonomous:runner`
-> 2. `always` ≠ "在跑" —— `always` 是"允许循环"，runner 是"实际循环"
-> 3. **新窗口 + /autonomous** 不会自动干活 —— 只开开关
-> 4. **`/handoff` vs `/autonomous`**：handoff 需你下个会话手动说"继续 X"；autonomous 不用你接
-> 5. **人在场反模式**：你随时能比 AI 快 → 不用 autonomous + 不用 handoff
-> 6. **5 次失败上限**：autonomous 跑挂 5 次自动停 + 汇报，避免无限循环
-| **个人 workflow 智能化** | `scripts/orchestrator/workflow/*.js` | observer / pattern-miner / suggestion-engine 三层架构，`/workflow` 主动建议 |
-| **工程自查/审计** | `scripts/orchestrator/audit/quick-audit.js` | 6 个扫描器（profile / completed / unfinished / gaps / duplicates / suggestions），9/9 测试 |
-
----
-
 ## 八、核心系统速览
 
 工程已实现的几个核心系统，完整说明见 `02_工作空间功能介绍.md`：
@@ -337,36 +310,7 @@ node scripts/会话快照/backup-history.js "中文标签"
 cat 00_ROOT_快速加载会话.md
 ```
 
-### 📌 会话交接（handoff · v3.0.8 详细版）
-
-> **核心定位**：`/handoff` = **人工接续**（你下个会话手动接） —— 别和 `/autonomous`（机器接续）混淆
-
-**6 类真实场景完整 4 步流程**（详见 [`.claude/rules/session-memory.md`](.claude/rules/session-memory.md) §"完整 4 步流程"段）：
-
-| 场景 | 1. 执行 | 2. 系统做的事 | 3. 中间干嘛 | 4. 接续 |
-|:-----|:--------|:--------------|:-----------|:--------|
-| **23:00 睡觉** | `/handoff` | 存快照 + 生成续聊 prompt | 睡觉 | 明早 `cc` + 说"继续 X" |
-| **吃饭 1h** | `/autonomous single` | 改 autonomous-state | 吃饭 | 回来 `/status` |
-| **爬山 1 天** | `/autonomous always` + runner | 改状态 + runner 守护 | 爬山 | 回家 `git log` |
-| **BUG 调一半** | `/handoff "BUG-X 根因" "继续"` | 显式标题带线索 | 开会 | 回来 `cc` + "继续修 BUG-X" |
-| **完成大版本** | `/handoff "vX.Y.Z 完成" --tags milestone` | 写 CHANGELOG 段 + tag | 庆祝 | `cc` + 规划下版本 |
-| **完成小修复** | **啥都不跑** | —— | —— | 直接说"做 next[0]" |
-
-**核心边界**：
-- `/handoff` 必带状态转移（摘要 → 下一阶段），`/clear` 是纯重置
-- `/handoff` vs `/compact`：compact 压缩上下文，handoff 跨会话
-- `/handoff` vs `/autonomous`：人工接 vs 机器接（**正交**而非默认 / 备选）
-
-**完整场景速查表**（§三上方）：见 [§🚀 自主模式 + handoff 高频场景](#🚀-自主模式--handoff-高频场景6-类用户路径--v308) 段
-
-```bash
-/handoff              # 🌟 一句话就够，自动从摘要提标题
-/handoff --auto       # + 开 VS Code 新窗口 + 复制启动命令
-/handoff --dry-run    # 预览接续 prompt（不写快照）
-```
-
-> **自动行为**：标题从会话摘要 `[已完成]` 自动提取，下一阶段从 `下一步:` 自动提取。
-> **完整教程**：[`.claude/handoff/TUTORIAL.md`](../.claude/handoff/TUTORIAL.md)
+> 
 
 ### 📌 左脑记忆
 
@@ -412,123 +356,140 @@ echo '{"tool_name":"UserPromptSubmit","tool_input":{"prompt":"排查 BUG"}}' | n
 | 想看 v1.2 改进 | `scripts/orchestrator/文档/v1.2-改进清单.md` |
 | 重启后怎么接上 | `00_ROOT_快速加载会话.md`（根目录）|
 
-### 📌 自主模式 + handoff 完整 4 步流程（6 场景 · v3.0.8）
+### 📌 会话交接：自主模式 + handoff 完整 4 步流程（6 场景 · v3.0.8）
 
-> **核心边界**：`/handoff` = **人工接续**（你下个会话手动接）· `/autonomous` = **机器接续**（AI 自动接力跑 next）
-> **速查表**：见 [§三·🚀 自主模式 + handoff 高频场景](#🚀-自主模式--handoff-高频场景6-类用户路径--v308) 段
-> **完整规则文件**：[`.claude/rules/session-memory.md`](.claude/rules/session-memory.md) §"完整 4 步流程"段
+# Claude Code 会话交接与自主模式场景速查
 
-#### 场景 1：现在 23:00 还没干完，得睡觉
+> 6 种高频场景的完整操作流程，覆盖睡觉、吃饭、开会、爬山、版本发布、日常继续
 
-**前提**：你正在调试 BUG / 写代码 / 做 P3，**没 commit 完**，明天想接着干。
 
-**Step 1：睡前执行 `/handoff`**
+## 场景 1：23:00 还没干完，得睡觉
+
+**前提**：正在调试 BUG / 写代码 / 做 P3，没 commit 完，明天想接着干
+
+### Step 1：睡前执行 `/handoff`
+
 ```bash
 node scripts/orchestrator/handoff.js
 # 或者无参数也行（自动从 summary 提标题）
 ```
 
-AI 会自动做 4 件事：
-1. 存快照到 `sessions/latest_summary.md`（包括你今天改了哪些文件、决策、未完成的事）
-2. 更新状态文件 `autonomous-state.json`：`awaiting_handoff = true` + `next_action = "明早续做 X"`
+AI 自动做 4 件事：
+1. 存快照到 `sessions/latest_summary.md`（今天改了哪些文件、决策、未完成的事）
+2. 更新 `autonomous-state.json`：`awaiting_handoff = true` + `next_action = "明早续做 X"`
 3. 生成接续 prompt（4 段拼装：会话摘要 + 待办 + 下阶段 + 约束）
 4. 打印到屏幕上 + 复制到剪贴板
 
-**Step 2：看输出确认（30 秒）**
+### Step 2：看输出确认（30 秒）
+
 ```
 🚀 会话交接 — 继续工作模式
 你正在接续上一会话的工作（[M53 close RESEARCH]）
-📋 上一会话快照：...（最近改动 + 待办）
+
+📋 上一会话快照：
+  - 最近改动：...
+  - 待办事项：...
+
 🎯 下一阶段目标：继续做下一候选：扩展 skill 生态
-⚠️  当前状态：自主模式 OFF + 演进锁 🟢 空闲
+
+⚠️ 当前状态：自主模式 OFF + 演进锁 🟢 空闲
+
 你的第一句话应该说什么？
 > "继续 继续做下一候选：扩展 skill 生态..."
 ```
 
-**Step 3：关电脑 / 关 Claude Code 窗口**
+### Step 3：关电脑 / 关 Claude Code 窗口
 - 直接关就行
 - 不用 `/clear` / `/compact`（handoff 已经把状态存到磁盘了）
 
-**Step 4：明早开新会话接续**
+### Step 4：明早开新会话接续
+
 ```bash
 # 1. 打开新的终端 / VS Code
 cd H:\AI-han\AiCode
-cc   # 启动 Claude Code（这会自动跑 session-init.sh fast 模式）
+cc   # 启动 Claude Code（会自动跑 session-init.sh fast 模式）
 ```
 
 新会话启动后：
-- SessionStart hook 自动加载 `sessions/latest_summary.md`（包含昨晚的快照）
-- 自动显示"昨晚在做 X，待办是 Y"
+- `SessionStart` hook 自动加载 `sessions/latest_summary.md`
+- 自动显示“昨晚在做 X，待办是 Y”
 - 你只需要说一句话即可接续：
 
 ```
 你：继续做扩展 skill 生态
-AI：[自动读 latest_state.json + 04.md §十二 ⏳ 段 + evolution-plan.json]
-    [跑 evolution-lock.js acquire AUDIT-roadmap-item-skill]
-    [写 plan 块（如果是 🔴 大）]
-    [等你 /ok]
 ```
 
-**核心**：不用粘贴 prompt — session-init hook + SessionStart hook 自动加载，handoff 生成的 prompt 只是给人看的参考（万一新会话没自动加载，你可以手动粘贴）。
+AI 自动执行：
+- 读 `latest_state.json` + `04.md §十二 ⏳ 段` + `evolution-plan.json`
+- 跑 `evolution-lock.js acquire AUDIT-roadmap-item-skill`
+- 写 plan 块（如果是 🔴 大）
+- 等你 `/ok`
 
----
+> **核心**：不用粘贴 prompt — session-init hook + SessionStart hook 自动加载，handoff 生成的 prompt 只是给人看的参考（万一新会话没自动加载，你可以手动粘贴）。
 
-#### 场景 2：出去吃饭 1 小时
 
-**前提**：你正在做某个 P3，**进度过半**，想吃饭时让 AI 继续跑 1 阶段。
+## 场景 2：出去吃饭 1 小时
 
-**Step 1：出门前执行 `/autonomous single`**
+**前提**：正在做某个 P3，进度过半，想吃饭时让 AI 继续跑 1 阶段
+
+### Step 1：出门前执行 `/autonomous single`
+
 ```bash
 node scripts/orchestrator/autonomous.js single
 # 或简写 /autonomous single
 ```
 
-**这做了什么**：
+做了什么：
 - 把 `autonomous-state.json` 改成：`enabled=true, mode=single`
-- **不立刻启动 runner**（runner 是可选的，独立进程）
+- 不立刻启动 runner（runner 是可选的，独立进程）
 
-**Step 2：可选启动 runner（如果当前是 `claude -p` 子会话模式）**
+### Step 2：可选启动 runner
+
 ```bash
 # 在另一个终端窗口跑（让 AI 退出会话后能接力）
 npm run autonomous:runner
 ```
 
-如果你是普通 Claude Code 桌面端（不是 `-p` 子会话），**runner 不需要**——AI 直接在当前会话继续干就行。
+> 如果你是普通 Claude Code 桌面端（不是 `-p` 子会话），runner 不需要——AI 直接在当前会话继续干就行。
 
-**Step 3：AI 自动跑（你吃饭中）**
+### Step 3：AI 自动跑（你吃饭中）
+
 - AI 完成当前 1 个阶段（比如写完 P3 的代码 + 测试）
 - 自动 commit
 - 自动写快照（不受 30 分钟常规间隔限制）
-- 自动**把模式切回 OFF**（因为是 single）
-- 你吃完饭回来，AI 已经停了 + 给你一段"完成了 X，下一步 Y"的报告
+- 自动把模式切回 OFF（因为是 single）
+- 你吃完饭回来，AI 已经停了 + 给你一段“完成了 X，下一步 Y”的报告
 
-**Step 4：回来后查进度**
+### Step 4：回来后查进度
+
 ```bash
 /status   # 看 L5 进度 + next 队列
 # 或者看 git log 看 AI commit 了啥
 git log --oneline -5
 ```
 
----
 
-#### 场景 3：周末出去爬山 1 天
+## 场景 3：周末出去爬山 1 天
 
-**前提**：你想让 AI 整天自己干活，**循环跑 next 队列**。
+**前提**：想让 AI 整天自己干活，循环跑 next 队列
 
-**Step 1：出门前执行 `/autonomous always`**
+### Step 1：出门前执行 `/autonomous always`
+
 ```bash
 node scripts/orchestrator/autonomous.js always
 ```
 
-**Step 2：必须启动 runner（关键！）**
+### Step 2：必须启动 runner（关键！）
+
 ```bash
-# 在独立 PowerShell 窗口跑（用 nohup 或 Start-Process 让它独立）
+# 在独立 PowerShell 窗口跑
 Start-Process powershell -ArgumentList "npm run autonomous:runner" -WindowStyle Hidden
 ```
 
-**为啥必须 runner**：always 模式需要 runner 进程来"AI 退出 → 启动新 AI 会话"接力。不开 runner 的话，AI 跑完 1 阶段就停了。
+> **为什么必须 runner**：always 模式需要 runner 进程来“AI 退出 → 启动新 AI 会话”接力。不开 runner 的话，AI 跑完 1 阶段就停了。
 
-**Step 3：runner 守护（你爬山一整天）**
+### Step 3：runner 守护（你爬山一整天）
+
 ```
 子会话 1: 跑 P3 候选 1 → 完成 → commit → 写快照 → 退出
 runner 检测到退出 → 启动子会话 2
@@ -539,37 +500,38 @@ runner 启动子会话 3
 
 每完成 1 个都会自动 commit + 写快照 + 自动选下一个候选（按 `evolution-plan.json` 的 `next[0]`）。
 
-**Step 4：回家后查进度**
+### Step 4：回家后查进度
+
 ```bash
-git log --oneline -10         # 看今天 AI 提交了啥
+git log --oneline -10              # 看今天 AI 提交了啥
 node scripts/orchestrator/evolution-lock.js peek P3-candidate-id   # 看具体候选状态
-/status                       # 看 L5 进度
-/autonomous off               # 关掉 always 模式（如果想停）
+/status                            # 看 L5 进度
+/autonomous off                    # 关掉 always 模式（如果想停）
 ```
 
-**关键约束**：5 次失败自动停 + 汇报（不会无限循环到崩）。
+> **关键约束**：5 次失败自动停 + 汇报，不会无限循环到崩。
 
----
 
-#### 场景 4：调试 BUG 调一半要开会
+## 场景 4：调试 BUG 调一半要开会
 
-**前提**：你正在调 BUG，发现了根因线索（比如"Y 函数在边界条件下失败"），但还没修完。
+**前提**：正在调 BUG，发现了根因线索（比如“Y 函数在边界条件下失败”），但还没修完
 
-**Step 1：会前执行 `/handoff` 显式标注调试线索**
+### Step 1：会前执行 `/handoff` 显式标注调试线索
+
 ```bash
 node scripts/orchestrator/handoff.js "BUG-X 调一半：根因在 Y 函数 Z 边界条件" "继续修 BUG-X：先写复现测试"
 ```
 
-**为啥标题要写具体**：
-- 无参数 handoff 自动从 summary 提标题，可能漏掉调试线索
-- 显式标题让下个会话**第一眼看到根因**，不用回忆
+> **为什么标题要写具体**：无参数 handoff 自动从 summary 提标题，可能漏掉调试线索；显式标题让下个会话第一眼看到根因，不用回忆。
 
-**Step 2：看接续 prompt 确认（关键！）**
+### Step 2：看接续 prompt 确认（关键！）
+
 ```bash
 node scripts/orchestrator/handoff.js --dry-run "BUG-X 调一半" "继续修 BUG-X"
 ```
 
 会显示：
+
 ```
 📋 上一会话快照：
   - 改了 Y 函数：边界条件 n=0 时未处理
@@ -579,9 +541,10 @@ node scripts/orchestrator/handoff.js --dry-run "BUG-X 调一半" "继续修 BUG-
 🎯 下一阶段目标：继续修 BUG-X：先跑复现测试，再补 if 分支
 ```
 
-**Step 3：去开会（30-60 分钟）**
+### Step 3：去开会（30-60 分钟）
 
-**Step 4：开会回来接续**
+### Step 4：开会回来接续
+
 ```bash
 # 打开新会话
 cc
@@ -589,70 +552,76 @@ cc
 你：继续修 BUG-X（从快照看到根因是 Y 函数边界条件）
 ```
 
----
 
-#### 场景 5：完成 v3.0.8 大版本
+## 场景 5：完成 v3.0.8 大版本
 
-**前提**：你刚 commit 完 v3.0.8 的最后一个 P0/P1，想标记里程碑。
+**前提**：刚 commit 完 v3.0.8 的最后一个 P0/P1，想标记里程碑
 
-**Step 1：执行 `/handoff` 带 milestone tag**
+### Step 1：执行 `/handoff` 带 milestone tag
+
 ```bash
 node scripts/orchestrator/handoff.js "v3.0.8 完成（M50-M53 + session-init 优化）" "v3.0.9 待规划" --tags "milestone v3.0.8"
 ```
 
-**Step 2：AI 自动写里程碑记录**
-- `CHANGELOG.md` 新增 `[v3.0.8]` 段（汇总 M50-M53）
-- `04_自我演进路线.md` §十二 已完成段追加 v3.0.8 行
-- 写快照时 tag = "milestone v3.0.8"（后续容易搜）
+### Step 2：AI 自动写里程碑记录
 
-**Step 3：跑归档（可选）**
+- `CHANGELOG.md` 新增 `[v3.0.8]` 段（汇总 M50-M53）
+- `04_自我演进路线.md §十二` 已完成段追加 v3.0.8 行
+- 写快照时 `tag = "milestone v3.0.8"`（后续容易搜）
+
+### Step 3：跑归档（可选）
+
 ```bash
 npm run archive   # 归档 v3.0.7 之前的旧文件到 archives/
 ```
 
-**Step 4：开新会话规划 v3.0.9**
+### Step 4：开新会话规划 v3.0.9
+
 ```bash
 cc
 # 说
 你：v3.0.8 完成，现在规划 v3.0.9 看 next 队列剩啥
 ```
 
----
 
-#### 场景 6：完成 1 个小修复，想看下一个
+## 场景 6：完成 1 个小修复，想看下一个
 
-**前提**：你刚 commit 完 1 个小修复（不是大版本），想继续干活。
+**前提**：刚 commit 完 1 个小修复（不是大版本），想继续干活
 
-**不要跑任何命令**
+> **不要跑任何命令**
 
 直接在新会话（或当前会话）说：
 
 ```
 你：commit 完了，接下来做啥？
-AI：[读 evolution-plan.json next 队列]
-    [找到 P3 候选 AUDIT-roadmap-item-skill]
-    [给你 plan 块]
+```
+
+AI 自动执行：
+- 读 `evolution-plan.json` next 队列
+- 找到 P3 候选 `AUDIT-roadmap-item-skill`
+- 给你 plan 块
+
+```
 你：/ok
 AI：[实施]
 ```
 
-**为啥不用 handoff / autonomous**：
-- handoff 适合"我要走，但状态要打包"
-- autonomous 适合"我要走，AI 自己接着干"
-- 你**在场 + 想立刻继续** → 啥都不用，直接说
+> **为什么不用 handoff / autonomous**：
+> - `handoff` 适合“我要走，但状态要打包”
+> - `autonomous` 适合“我要走，AI 自己接着干”
+> - 你在场 + 想立刻继续 → 啥都不用，直接说
 
----
 
-#### 总结表（极简速查）
+## 总结表（极简）
 
-| 场景 | 执行 | 中间干嘛 | 接续 |
-|:-----|:-----|:---------|:-----|
-| 23:00 睡觉 | `/handoff` | 睡觉 | 明早 `cc` + 说"继续 X" |
-| 吃饭 1h | `/autonomous single` | 吃饭 | 回来 `/status` |
-| 爬山 1 天 | `/autonomous always` + runner | 爬山 | 回家 `git log` + `/status` |
-| BUG 调一半 | `/handoff "线索" "下阶段"` | 开会 | 回来 `cc` + 说"继续修 BUG-X" |
-| 完成 v3.0.8 | `/handoff --tags milestone` | 庆祝 | `cc` + 规划下版本 |
-| 完成小修复 | 啥都不跑 | —— | 直接说"接下来做啥" |
+| 场景            | 执行                          | 中间干嘛 | 接续                         |
+| :-------------- | :---------------------------- | :------- | :--------------------------- |
+| **23:00 睡觉**  | `/handoff`                    | 睡觉     | 明早 `cc` + 说“继续 X”       |
+| **吃饭 1h**     | `/autonomous single`          | 吃饭     | 回来 `/status`               |
+| **爬山 1 天**   | `/autonomous always` + runner | 爬山     | 回家 `git log` + `/status`   |
+| **BUG 调一半**  | `/handoff "线索" "下阶段"`    | 开会     | 回来 `cc` + 说“继续修 BUG-X” |
+| **完成 v3.0.8** | `/handoff --tags milestone`   | 庆祝     | `cc` + 规划下版本            |
+| **完成小修复**  | 啥都不跑                      | —        | 直接说“接下来做啥”           |
 
 ---
 
