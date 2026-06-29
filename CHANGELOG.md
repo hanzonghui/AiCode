@@ -61,6 +61,22 @@
   - 第 5 条"自治可观测"↑：候选兑现可关闭（避免 next 队列堆积已实施的候选）
 - **关联**：`AUDIT-roadmap-item-skill`（同 P3 仍 ⏳） · [[kb-research-skill-ecosystem-2026]]
 
+### Changed - session-init 速度优化 + 新会话第 1 分钟 2 步仪式（v3.0.8 · 2026-06-29）
+
+- **背景**：用户痛点 — 打开新会话不知道进度到哪 / next 队列有啥 / 下一步该做啥 → 习惯性 `/autonomous` 让 AI 跑（人在场时反模式）。
+- **本阶段动作**：
+  - **`session-init.sh`** 加 `SESSION_INIT_MODE` 环境变量（默认 `fast`）：Step 2/3 跳过全文（只显示存在 + 数量），启动 30 秒内完成
+  - **`session-memory.md`** 新增"🎯 新会话第 1 分钟必跑 2 步"段 + 9 行场景表（人在模式 vs 自主模式 + handoff vs compact vs clear 边界）
+  - **`CLAUDE.md` 启动协议** Step 1.5 加必跑 2 步仪式（`/status` + 自然语言指令）
+- **关键边界**：
+  - `/status` 取代 `/autonomous` 作为新会话默认（人在场）
+  - `/audit` **不放入仪式**（慢，用途是产生 backlog，按需）
+  - `/handoff` 仅在"有未固化临时状态"时用（罕见），其余情况直接 `/clear` 或 `/compact`
+- **L5 影响**：
+  - 第 5 条「人工干预率 ↓」：用户上手摩擦从"习惯性 /autonomous"降到"30 秒 2 步"
+  - 第 3 条「自治可观测 ↑」：session-init fast 模式让 SessionStart hook 不再拖慢启动
+- **Files**：`session-init.sh` + `session-memory.md` + `CLAUDE.md`（3 文件 · +24 / -3 行）
+
 ### Fixed - 合并 package.json 重复 npm script（AUDIT-cleanup-npm-script · 2026-06-29）
 
 - **背景**：`/audit` 浅层报告 P1（2026-06-29 13:08）发现 `package.json` line 23-24 两条命令值完全相同：

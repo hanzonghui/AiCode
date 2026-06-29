@@ -1,6 +1,14 @@
 #!/bin/bash
 # 🧠 左脑会话初始化脚本
 # 新会话开始时自动执行
+#
+# 模式（环境变量 SESSION_INIT_MODE）：
+#   fast (默认) — Step 2/3 跳过全文，只显示存在/数量（30 秒内启动）
+#   full        — 跑全部步骤（调试 / 排查问题时用）
+# 用法：
+#   SESSION_INIT_MODE=full bash .claude/skills/left-brain/scripts/session-init.sh
+
+SESSION_INIT_MODE="${SESSION_INIT_MODE:-fast}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILL_DIR="$(dirname "$SCRIPT_DIR")"
@@ -58,31 +66,43 @@ else
 fi
 echo ""
 
-echo "📝 Step 2: 加载上次会话摘要"
+echo "📝 Step 2: 加载上次会话摘要（模式: ${SESSION_INIT_MODE}）"
 if [ -f "$SUMMARY_FILE" ]; then
-    echo "  ✅ 找到上次会话摘要"
-    grep -A 100 '## 对话内容' "$SUMMARY_FILE" | head -20
-    if grep -q '## 关键决策' "$SUMMARY_FILE"; then
-        grep -A 10 '## 关键决策' "$SUMMARY_FILE" | grep -E '^\s*[-·]' | head -5
-    fi
-    if grep -q '## 待办事项' "$SUMMARY_FILE"; then
-        grep -A 10 '## 待办事项' "$SUMMARY_FILE" | grep -E '^\s*[-·]' | head -5
+    if [ "$SESSION_INIT_MODE" = "fast" ]; then
+        # fast 模式：只显示摘要存在 + 第一行标题
+        echo "  ✅ 上次会话摘要存在（用 SESSION_INIT_MODE=full 查看完整）"
+        head -1 "$SUMMARY_FILE" | sed 's/^/    /'
+    else
+        echo "  ✅ 找到上次会话摘要"
+        grep -A 100 '## 对话内容' "$SUMMARY_FILE" | head -20
+        if grep -q '## 关键决策' "$SUMMARY_FILE"; then
+            grep -A 10 '## 关键决策' "$SUMMARY_FILE" | grep -E '^\s*[-·]' | head -5
+        fi
+        if grep -q '## 待办事项' "$SUMMARY_FILE"; then
+            grep -A 10 '## 待办事项' "$SUMMARY_FILE" | grep -E '^\s*[-·]' | head -5
+        fi
     fi
 else
     echo "  📝 暂无历史会话摘要"
 fi
 echo ""
 
-echo "🔗 Step 3: 加载相关知识"
+echo "🔗 Step 3: 加载相关知识（模式: ${SESSION_INIT_MODE}）"
 if [ -d "$KNOWLEDGE_DIR" ]; then
-    recent_files=$(ls -1t "${KNOWLEDGE_DIR}"/*.md 2>/dev/null | head -5)
-    if [ -n "$recent_files" ]; then
-        echo "  最近访问的知识:"
-        echo "$recent_files" | while read file; do
-            id=$(basename "$file" .md)
-            content=$(head -20 "$file" | grep -E '^content:' | sed 's/^content: //' | head -c 50)
-            echo "    - $id: $content..."
-        done
+    if [ "$SESSION_INIT_MODE" = "fast" ]; then
+        # fast 模式：只显示 KB 数量（不进 ls/head）
+        kb_count=$(ls -1 "${KNOWLEDGE_DIR}"/*.md 2>/dev/null | wc -l)
+        echo "  ✅ 知识库就绪（${kb_count} 条 KB · 详细见 /status 或 evolution-plan.json）"
+    else
+        recent_files=$(ls -1t "${KNOWLEDGE_DIR}"/*.md 2>/dev/null | head -5)
+        if [ -n "$recent_files" ]; then
+            echo "  最近访问的知识:"
+            echo "$recent_files" | while read file; do
+                id=$(basename "$file" .md)
+                content=$(head -20 "$file" | grep -E '^content:' | sed 's/^content: //' | head -c 50)
+                echo "    - $id: $content..."
+            done
+        fi
     fi
 fi
 echo ""

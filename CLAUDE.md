@@ -18,6 +18,19 @@
 5. **智能调度** → 复杂任务自动派 Agent（见下方）
 6. **禁止默认全局扫描** → 需要扫描整个仓库时（如 `Grep` 跨文件搜 TODO、`glob **`），必须先询问用户，说明原因并请求授权
 
+### 🎯 新会话第 1 分钟必跑（v3.0.8+ · 30 秒上手）
+
+**痛点**：开新会话不知道当前进度 / next 队列 / 下一步 → 习惯性 `/autonomous`（反模式）。
+
+**仪式**（替代 `/handoff` 默认使用 + 替代 `/autonomous` 默认启动）：
+
+1. `/status`（1 键 ~3 秒，看 L5 进度 + next 队列 + 左脑状态）
+2. 说一句："继续 next[X]" / "做 [ID]" / "今天想 [主题]"
+
+**不跑**：`/audit`（慢，**用来产生 backlog 不是初始化**，按需开）。
+
+完整场景表（人在 vs 自主模式 + handoff vs compact vs clear 边界）见 [`.claude/rules/session-memory.md`](.claude/rules/session-memory.md) §"新会话第 1 分钟必跑 2 步"。
+
 ---
 
 ## 工作空间结构
