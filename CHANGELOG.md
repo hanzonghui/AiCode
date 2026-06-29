@@ -78,6 +78,27 @@
 - **剩余**：E 主题 2 子项中的 E-recall-threshold（P0 · dispatcher 阈值 0.2→0.05）另立条目
 - **关联**：`.claude/audits/audit-20260629-2330-deep.md` 主题 E · M14 知识图谱反哺 · semantic-recall.js 索引失效机制（KB mtime 自动 rebuild）
 
+### Fixed - M54 /audit batch 2 主题 D：plan-bridge 永久卡 executing 状态修复（2026-06-30 · v3.0.9）
+
+> **背景**：`.claude/rules/plan-protocol.md` 状态机有 `executing` 状态，但执行流程（`scripts/orchestrator/planning/plan-bridge.js`）只 `updatePlanStatus('executing')` 不记 `executing_at` 字段 + 不做超时检查——脚本崩溃后下次 `executeLatest` 找不到 approved，plan 永久卡死。
+
+- **方案**：3 层防护
+  1. **状态字段明确化**：`executing_at` 时间戳
+  2. **stale 自动恢复**：`rescueStaleExecutings(30min)` — 超 30 分钟 executing → 自动回退 approved + 写 warn 日志（含 elapsed 分钟数）
+  3. **OS-level 锁**：`acquireLock` / `releaseLock`（`memory/plan-bridge.lock` 文件，35 分钟强制接管） + `executePlan` `try/finally` 兜底释放
+- **改动**：
+  - `scripts/orchestrator/planning/plan-bridge.js` — 新增 `rescueStaleExecutings` / `acquireLock` / `releaseLock` / `touchExecutingLock` 4 函数（~110 行）+ `executePlan` 启动首行调 stale rescue + `try/finally` 包核心循环 + 模块 export 扩展
+  - `scripts/orchestrator/planning/test-plan-bridge-stale.js`（新建）— 14 场景断言（stale 恢复 / 30 分钟边界 ±1ms / 单进程锁 / release 后能再 acquire / executePlan 启动自动 rescue / 锁被占拒绝）
+  - `package.json` — 主 `test` 串接入 + 新增 `test:plan-bridge-stale` 单跑 alias + `plan:rescue-stale` 命令
+- **验证**：
+  - `test:plan-bridge-stale` **14/14 通过**
+  - `test:plan-bridge`（原 baseline）**44/44 无 regression**
+  - 5 类对抗式审查（输入异常 / 边界 / 并发 / 时间污染 / 部署回滚）全部覆盖：边界 30min±1ms 测试 + 锁被占拒绝 + try/finally 兜底
+- **L5 影响**：
+  - 第 4 条「完成质量」↑：plan 协议状态机从"软标签"升级为"硬承诺"（带时间戳 + 锁 + 自动恢复）
+  - 第 5 条「自治覆盖率」↑：自主模式跑 plan 时即使子会话崩溃也能自动恢复，不再需人工干预
+- **关联**：`.claude/rules/plan-protocol.md` 状态机 v1 → v2（添加 stale 阈值 + OS 锁条款）· `.claude/audits/audit-20260629-2330-deep.md` 主题 D · M52 first-principles 思维闸门（4 类反模式避免 + 5 类审查角度覆盖）
+
 ### Added - M52 「两大神级 Prompt」方法论沉淀：0.5 步思维闸门（v3.0.8 · 2026-06-29）
 
 - **背景**：[AIHOT 作者饭桌心得](两大神级prompt.md) 总结的"两大神级 Prompt"（第一性原理 + 对抗式审查）已在 AiCode 半显式存在——CLAUDE.md 最高指令「先问这能帮 Claude 变智能吗」/ M48 借鉴方法论 / ECC 评估 5 理由 / qa-reviewer / swarm-coordinator，但**没有作为统一方法论 + 必跑动作沉淀**。

@@ -88,6 +88,112 @@ function appendExecution(entry) {
   saveExecutionLog(log);
 }
 
+// ── Stale Executing 自动恢复 (M54 batch 2 D) ─────────
+
+// 默认 30 分钟（与 dispatcher stuck-detector 阈值对齐）
+const DEFAULT_STALE_MS = 30 * 60 * 1000;
+// OS-level lock 文件（防 executeLatest 并发跑覆盖 executing_at）
+const LOCK_FILE = path.join(MEMORY_DIR, 'plan-bridge.lock');
+
+/**
+ * 扫 pending-plans.json 中 status=executing + 超 stalenessMs 阈值的卡死 plan
+ * 自动回退: executing → approved + 记录 executing_warn 日志
+ * @param {number} stalenessMs
+ * @returns {{ rescued: string[], scanned: number }}
+ */
+function rescueStaleExecutings(stalenessMs = DEFAULT_STALE_MS) {
+  let plans;
+  try {
+    plans = loadPlans();
+  } catch (e) {
+    return { rescued: [], scanned: 0 };
+  }
+
+  const now = Date.now();
+  const rescued = [];
+  let dirty = false;
+
+  for (const p of plans) {
+    if (p.status !== 'executing') continue;
+    // 优先用 executing_at，没有就 fallback executing_lock_at，再没有就跳过（无法判断时间）
+    const lockedAt = p.executing_at || p.executing_lock_at;
+    if (!lockedAt) continue;
+    const elapsed = now - new Date(lockedAt).getTime();
+    if (elapsed > stalenessMs) {
+      const planId = p.id;
+      const elapsedMin = Math.round(elapsed / 60000);
+      // 回退到 approved + 标记 stale 警告
+      p.status = 'approved';
+      p.stale_warning = `executing 持续 ${elapsedMin} 分钟（>${Math.round(stalenessMs / 60000)} 分钟阈值），自动回退 approved`;
+      p.stale_recovered_at = new Date().toISOString();
+      delete p.executing_at;
+      delete p.executing_lock_at;
+      rescued.push(planId);
+      dirty = true;
+
+      // 写 warn 到 execution log
+      appendExecution({
+        planId,
+        stepIndex: -1,
+        stepText: `[STALE-RESCUE] ${p.stale_warning}`,
+        agent: 'system',
+        files: [],
+        status: 'stale_recovered',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  if (dirty) savePlans(plans);
+  return { rescued, scanned: plans.filter(p => p.status === 'executing').length + rescued.length };
+}
+
+/**
+ * OS-level lock 文件（防 executeLatest 并发跑）
+ * @returns {boolean} true = 锁成功；false = 已有别的进程在跑
+ */
+function acquireLock() {
+  try {
+    if (fs.existsSync(LOCK_FILE)) {
+      const lockData = JSON.parse(fs.readFileSync(LOCK_FILE, 'utf8'));
+      const age = Date.now() - new Date(lockData.acquired_at).getTime();
+      // 锁超过 35 分钟强制接管（比 stale 阈值长 5 分钟）
+      if (age > 35 * 60 * 1000) {
+        // 强制接管
+      } else {
+        return false; // 别人持有
+      }
+    }
+    fs.writeFileSync(LOCK_FILE, JSON.stringify({
+      acquired_at: new Date().toISOString(),
+      pid: process.pid,
+    }));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function releaseLock() {
+  try {
+    if (fs.existsSync(LOCK_FILE)) fs.unlinkSync(LOCK_FILE);
+  } catch { /* 释放失败不影响主流程 */ }
+}
+
+/**
+ * 把正在 executing 的 plan 重新标 executing_at（更新心跳）
+ */
+function touchExecutingLock(planId) {
+  try {
+    const plans = loadPlans();
+    const p = plans.find(x => x.id === planId);
+    if (p && p.status === 'executing') {
+      p.executing_at = new Date().toISOString();
+      savePlans(plans);
+    }
+  } catch { /* 心跳失败不影响主流程 */ }
+}
+
 function savePlans(plans) {
   ensureDir(path.dirname(PENDING_PLANS_FILE));
   fs.writeFileSync(PENDING_PLANS_FILE, JSON.stringify(plans, null, 2));
@@ -189,6 +295,9 @@ function executePlan(planId, opts = {}) {
   const dryRun = opts.dryRun || false;
   const model = opts.model || DEFAULT_MODEL;
 
+  // M54 batch 2 D: stale 自动恢复（执行前扫一次）
+  try { rescueStaleExecutings(); } catch { /* 不阻塞主流程 */ }
+
   const plans = loadPlans();
   const plan = plans.find(p => p.id === planId);
   if (!plan) return { ok: false, error: 'plan not found', executed: 0, failed: 0, results: [] };
@@ -197,8 +306,16 @@ function executePlan(planId, opts = {}) {
     return { ok: false, error: `plan status is ${plan.status}, expected approved`, executed: 0, failed: 0, results: [] };
   }
 
+  // M54 batch 2 D: OS-level 锁（防并发跑覆盖 executing_at）
+  if (!dryRun) {
+    if (!acquireLock()) {
+      return { ok: false, error: 'plan-bridge 锁被占用（另有进程在跑）', executed: 0, failed: 0, results: [] };
+    }
+  }
+
   const totalSteps = plan.plan.steps.length;
 
+  try {
   // 标记 executing
   if (!dryRun) updatePlanStatus(planId, 'executing');
 
@@ -255,6 +372,10 @@ function executePlan(planId, opts = {}) {
   });
 
   return { ok: true, executed, failed, total: totalSteps, results };
+  } finally {
+    // M54 batch 2 D: try/finally 兜底释放锁（即使 plan 抛异常也不卡锁）
+    if (!dryRun) releaseLock();
+  }
 }
 
 /**
@@ -356,5 +477,10 @@ module.exports = {
   executeLatest,
   buildStepPrompt,
   findLatestApproved,
+  rescueStaleExecutings,
+  acquireLock,
+  releaseLock,
+  DEFAULT_STALE_MS,
+  LOCK_FILE,
   EXECUTION_LOG_FILE,
 };
