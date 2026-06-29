@@ -92,6 +92,37 @@ bash .claude/skills/left-brain/scripts/session-summary.sh cleanup 30
 | **完成 1 个增量就停** | `/autonomous single` |
 | **纯收工**（已 commit + 8 文档同步完）| 直接关，**啥都不跑**（最常见）|
 
+### `/handoff` 详细使用场景（人工接续 · 7 类）
+
+| # | 场景 | 命令 |
+|:-:|:-----|:-----|
+| 1 | 晚 12 点想睡觉（当天没 commit 完 + 明天想接着）| `/handoff` 无参数（自动从 summary 提标题）|
+| 2 | 上下文 40% 触顶（对话还有信息但 token 不够）| `/handoff --dry-run` 先看 → 确认 → 再跑 |
+| 3 | 完成里程碑（v3.0.X 大版本收尾）| `/handoff "v3.0.5 完成" "v3.0.6 待规划" --tags "milestone"` |
+| 4 | 双会话并行（想换个窗口继续）| `/handoff "A 窗口做 X" --auto` 开 VS Code 新窗口 + 剪贴板命令 |
+| 5 | 调试线索打包（BUG 调一半 + 发现根因线索）| `/handoff "BUG-X 调一半：根因在 Y 函数" "继续修 BUG-X"` |
+| 6 | 决策痕迹打包（刚做完多个 commit / KB / CHANGELOG）| `/handoff "决策完成：3 commit" "下一会话选 next[0]"` |
+| 7 | 纯收工（已 commit + 8 文档同步完 + 无进行中任务）| **不需要 `/handoff`**（直接关）|
+
+**关键边界**：
+- `/handoff` vs `/clear`：handoff 必带状态转移，clear 是纯重置
+- `/handoff` vs `/compact`：compact 压缩上下文但保持 momentum，handoff 跨会话
+- `/handoff` vs `/autonomous`：handoff 人工接力（需粘贴 prompt），autonomous 机器接力（runner 自动）
+
+### `/autonomous` 详细使用场景（机器接续 · 4 类）
+
+| # | 场景 | 模式 | 行为 |
+|:-:|:-----|:-----|:-----|
+| 1 | 离开 1 小时 | `single` | 完成当前 1 阶段后自动停，写快照，关会话 |
+| 2 | 离开 1 整天 | `always` | 循环跑 next 队列，每阶段自动快照 + 新子会话接力 |
+| 3 | 只想开开关 | `on` / `off` | 状态机切换，不实际启动 runner |
+| 4 | 后台无人值守 | `always` + `autonomous:runner` | runner 守护进程：子会话退出 → 启动新子会话 |
+
+**关键边界**：
+- `/autonomous` ON 期间不主动询问：5 次失败 / 关键决策 → 写快照不询问
+- `/autonomous` ≠ `/handoff`：autonomous 不用写"下一阶段 prompt"，runner 启动的新子会话**通过 SessionStart hook 自动加载 `latest_state.json`**
+- `/autonomous` vs `/status`：status 是查询当前状态，autonomous 是切换开关
+
 ### session-init 速度优化（v3.0.8+）
 
 ```bash

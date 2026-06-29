@@ -61,6 +61,21 @@
   - 第 5 条"自治可观测"↑：候选兑现可关闭（避免 next 队列堆积已实施的候选）
 - **关联**：`AUDIT-roadmap-item-skill`（同 P3 仍 ⏳） · [[kb-research-skill-ecosystem-2026]]
 
+### Docs - /handoff + /autonomous 详细使用场景补充（v3.0.8 · 2026-06-29）
+
+- **背景**：用户在 /handoff 会话中反馈"两个命令详细使用场景不够清晰"，需要明确边界。
+- **本阶段动作**：
+  - `session-memory.md` 场景表扩展为 3 张子表：
+    - 9 行"人在模式"基础场景表（保留）
+    - **7 行 `/handoff` 详细使用场景**（晚 12 点 / 40% 触顶 / 里程碑 / 双会话 / 调试线索 / 决策痕迹 / 纯收工）
+    - **4 行 `/autonomous` 详细使用场景**（离开 1 小时 single / 1 整天 always / 只想开开关 / 后台无人值守 always+runner）
+  - 每张子表都加"关键边界"段（与 `/clear` `/compact` `/status` 的差异）
+- **关键洞察**：
+  - `/handoff` = 人工接续（需粘贴 prompt）
+  - `/autonomous` = 机器接续（runner 自动 + SessionStart hook）
+  - 两者**正交**而非默认 / 备选
+- **Files**：`session-memory.md`（+27 行 · 0 删）
+
 ### Changed - session-init 速度优化 + 新会话第 1 分钟 2 步仪式（v3.0.8 · 2026-06-29）
 
 - **背景**：用户痛点 — 打开新会话不知道进度到哪 / next 队列有啥 / 下一步该做啥 → 习惯性 `/autonomous` 让 AI 跑（人在场时反模式）。
