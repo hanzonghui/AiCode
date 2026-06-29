@@ -5,7 +5,7 @@
 >
 > 🚨 **最高指令（2026-06-24）**：本工程的核心目标是 **智能演进**（围绕 04 纲领 4 大智能增量 L1→L5 路径）。git 管理 / 多用户 / 权限 / 审计 / 团队产品化等**均非核心**。评估任何新功能/任务时，先问"这能帮 Claude 变智能吗？"→ 否则降级或拒绝。详见 `.claude/memory/priority-intelligent-evolution.md`。
 >
-> 🚀 **自主模式（v2.2.0）**：运行 `npm run autonomous` 弹出方向键菜单（↑↓ 选择，↵ 确认），或执行 `/autonomous`（无参弹出选择框）/ `/autonomous single/always/on/off` 让 Claude 自主决策开发。关闭用 `/autonomous-stop`。详见 `04_自我演进路线.md` 顶部"🚀 自主演进模式"段。
+> 🚀 **自主模式（v3.0.7）**：运行 `npm run autonomous` 弹出方向键菜单（↑↓ 选择，↵ 确认），或执行 `/autonomous`（无参弹出选择框）/ `/autonomous single/always/on/off` 让 Claude 自主决策开发。**注意**：`/autonomous` 只开开关；要后台无人值守跑需另开 PowerShell 跑 `npm run autonomous:runner`。关闭用 `/autonomous-stop`。详见 `01_AI-ClaudeCode-最佳实践精简.md` §三"🚀 自主模式高频场景"。
 
 ---
 

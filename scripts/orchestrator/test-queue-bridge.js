@@ -393,12 +393,12 @@ console.log('\n── 13. borrowed repos 白名单 ──');
     fs.writeFileSync(candsPath, JSON.stringify(mockCands));
 
     const cands = readEvolveCandidates();
-    check('mock 3 条 adopt → 过滤后 2 条（已借鉴 mksglu 被跳）', cands.length === 2);
+    check('mock 3 条 adopt → 过滤后 1 条（已借鉴 mksglu + ECC 均被跳）', cands.length === 1);
 
     const ids = cands.map(c => c.id);
     check('已借鉴的 mksglu/context-mode 被过滤（不在 ids 中）', !ids.includes('EVOLVE-mksglu-context-mode'));
     check('全新 brand-new/never-seen 保留', ids.includes('EVOLVE-brand-new-never-seen'));
-    check('未借鉴的 affaan-m/ECC 保留', ids.includes('EVOLVE-affaan-m-ecc'));
+    check('已借鉴的 affaan-m/ECC 被过滤（不在 ids 中）', !ids.includes('EVOLVE-affaan-m-ecc'));
 
     // 大小写不敏感测试：borrowed.json 是小写，但 candidates.name 可大写
     fs.writeFileSync(candsPath, JSON.stringify({

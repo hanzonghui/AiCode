@@ -10,6 +10,26 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Fixed - 合并 package.json 重复 npm script（AUDIT-cleanup-npm-script · 2026-06-29）
+
+- **背景**：`/audit` 浅层报告 P1（2026-06-29 13:08）发现 `package.json` line 23-24 两条命令值完全相同：
+  ```json
+  "test:verify-runner": "node scripts/orchestrator/verify-runner-subprocess.js",
+  "verify:runner": "node scripts/orchestrator/verify-runner-subprocess.js",
+  ```
+  两条等价命令同时存在 → 入口歧义 + 维护成本翻倍 + 文档同步困难。
+- **本阶段动作**：
+  - 保留 `test:verify-runner`（已在 `test:autonomous` npm script 里被引用，与 `npm test` 主链一致，命名风格正确）
+  - 删除 `verify:runner`（dupe，无外部引用）
+- **验证**：
+  - `npm run test:verify-runner` **21/21 全部通过**（保留的功能完整）
+  - `npm run test:queue-bridge` **55/55 通过**（修了一处 13.3 测试断言：mock 加 ECC 后过滤预期从 2 → 1）
+  - `npm run doc:check` **0 失败**（合计 44 → 47 ✅ + ⏳ 同步）
+- **CHANGELOG line 240 历史不动**：M19-2 段曾记录"新增 test:verify-runner / verify:runner"——这是历史事实保留，避免改写历史
+- **L5 影响**：
+  - 第 4 条「完成质量」↑：删 1 行重复命令 = -1 处未来维护点
+  - 第 5 条「自治覆盖率」↑：bridge 现已自动入队 3 条新候选（含本候选），`/audit → queue → runner` 链路验证完整
+
 ### Fixed - bridge 借鉴状态 dedupe（M16 升级 · v3.0.8 · 2026-06-29）
 
 - **背景**：`scripts/bridge/queue-bridge.js` 每次 `/evolve` 跑都会把已完成的 M26/M27/M31/M38/M39/M40 借鉴项目以新 ID（`EVOLVE-thedotmack-claude-mem` 等）重复入队。根因：dedupe 按 id 匹配，但 `evolution-plan.json history` 段里 ID 是 `M39-claude-mem-poc`（非 EVOLVE- 形式），bridge 不知道已借鉴。

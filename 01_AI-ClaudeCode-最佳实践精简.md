@@ -220,6 +220,22 @@
 | **LLM 辅助 auto-fix** | `scripts/orchestrator/proactive/llm-fix-advisor.js` | test-coverage / deps-outdated / candidate-pending 加 LLM 建议（`--llm` flag），19+23 测试 |
 | **任务复杂度评分** | `dispatcher.js` v2.5.0+ | `scoreComplexity()` 0-10 数字 + 三档阈值（<4 不派 / 4-7 灰区 / >7 派），M10 接入 Agent 数量（1-3） |
 | **自主演进模式** | `npm run autonomous`（↑↓ 方向键选择，↵ 自动执行）<br>或 `/autonomous`（无参弹出选择框）<br>或 `/autonomous single\|always\|on\|off` | single 完成一个阶段后停，always 循环；5 道安全闸门 + 5 次失败上限，64+12+6 测试 |
+
+### 🚀 自主模式高频场景（4 类用户路径 · v3.0.7）
+
+| 你的场景 | 命令 | 关键认知 |
+|:---------|:-----|:---------|
+| **1 · 当前窗口做** | `/autonomous` → 选 always → 选"当前会话做" | Claude 在当前窗口干 4-5h，**窗口不能关** |
+| **2 · 后台无人值守** | `/autonomous` always → 另开 PowerShell 跑 `npm run autonomous:runner` | runner 后台循环，**关窗口都行** |
+| **3 · 新窗口接续** | 新窗口 → `/autonomous` always | 自动加载快照 + 接 next 队首，**不会自动启动 runner**（仍需手动 `npm run autonomous:runner`） |
+| **4 · 中途切 runner** | 当前 Claude 干 30 分钟 → Esc 取消 → 切 PowerShell 跑 `npm run autonomous:runner` | 切换瞬间无工作丢失（快照 + 锁机制） |
+
+> **5 条关键认知**：
+> 1. `/autonomous` **只是开关**，不是启动跑——runner 永远要手动 `npm run autonomous:runner`
+> 2. `always` ≠ "在跑"——`always` 是"允许循环"，runner 是"实际循环"
+> 3. **新窗口 + /autonomous** 不会自动干活——只开开关
+> 4. **always 自动接力** 下一个候选，runner 跑完一个阶段后
+> 5. **always 空转保护**：队列空了 always 自动 OFF
 | **个人 workflow 智能化** | `scripts/orchestrator/workflow/*.js` | observer / pattern-miner / suggestion-engine 三层架构，`/workflow` 主动建议 |
 | **工程自查/审计** | `scripts/orchestrator/audit/quick-audit.js` | 6 个扫描器（profile / completed / unfinished / gaps / duplicates / suggestions），9/9 测试 |
 

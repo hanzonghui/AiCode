@@ -21,7 +21,6 @@
 "test:auto-fix": "node scripts/orchestrator/proactive/test-auto-fix.js",
 "test:autonomous": "node scripts/orchestrator/test-autonomous.js && node scripts/orchestrator/test-autonomous-runner.js && node scripts/orchestrator/test-autonomous-menu.js && node scripts/orchestrator/test-verify-runner-subprocess.js",
     "test:verify-runner": "node scripts/orchestrator/verify-runner-subprocess.js",
-    "verify:runner": "node scripts/orchestrator/verify-runner-subprocess.js",
 "autonomous:start": "node scripts/orchestrator/autonomous.js start",
 "autonomous": "node scripts/orchestrator/autonomous-menu.js",
 "autonomous:runner": "node scripts/orchestrator/autonomous.js runner",
