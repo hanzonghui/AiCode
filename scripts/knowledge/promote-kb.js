@@ -21,6 +21,7 @@
  *   node promote-kb.js --apply --yes         # 直接执行（CI / 自主模式用，无交互）
  *   node promote-kb.js --apply --delete      # 升 docs 后删源（不留 pointer）
  *   node promote-kb.js --apply --target docs # 升 docs/02.md（默认升 CLAUDE.md）
+ *   node promote-kb.js --promote-to-asset     # 毕业到 .claude/prompt-assets/（M54 Phase 3）
  *   node promote-kb.js --kb KB-20260629-001  # 只对单条操作
  *
  * 纯函数离线，不接 hook。
@@ -63,10 +64,14 @@ const PROMOTE_CONFIG = {
   evergreenCategories: ['reference', 'preference', '偏好'],
   // 自动升 docs 目标（默认升 CLAUDE.md 顶部"参考指针"段）
   defaultTarget: 'CLAUDE.md',
+  // prompt-asset 目录（M54 Phase 3）
+  assetDir: path.join(WORKSPACE_ROOT, '.claude', 'prompt-assets'),
   // 升 docs 时写什么
   pointerTemplate: (kb) => `- [${kb.title}](${path.basename(kb.filePath)}) — ${kb.oneLineSummary}`,
   // 缩为 pointer 时的源文件模板
   sourcePointerTemplate: (kb) => `# ${kb.title}\n\n> **已毕业到 ${kb.promoteTarget}**（${new Date().toISOString().slice(0, 10)} · M48-A）\n> 原始内容见 docs/${path.basename(kb.filePath)}。\n`,
+  // 缩为 pointer 到 prompt-asset 时的源文件模板
+  assetPointerTemplate: (kb, assetPath) => `# ${kb.title}\n\n> **已毕业到 ${assetPath}**（${new Date().toISOString().slice(0, 10)} · M48-A + M54 Phase 3）\n> 原始内容见 ${assetPath}。\n`,
 };
 
 // ── 工具函数 ─────────────────────────────────────────
@@ -223,7 +228,7 @@ function cmdReport() {
   return { toPromote, keep };
 }
 
-function cmdApply({ deleteSource = false, target = null, kbFilter = null, confirmed = false }) {
+function cmdApply({ deleteSource = false, target = null, kbFilter = null, confirmed = false, promoteToAsset = false }) {
   const all = listAllKBs();
   const repeat = buildRepeatMap(all);
   const filtered = kbFilter ? all.filter(k => k.filePath.includes(kbFilter)) : all;
@@ -240,10 +245,11 @@ function cmdApply({ deleteSource = false, target = null, kbFilter = null, confir
 
   // 闸门：未确认时打印计划并要求 yes
   if (!confirmed) {
-    console.log(`\n⚠️  将对 ${toPromote.length} 条 KB 执行毕业（缩源为 pointer，${deleteSource ? '删除源' : '保留源'}）:\n`);
+    const actionLabel = promoteToAsset ? '写入 .claude/prompt-assets/' : `升 ${target || PROMOTE_CONFIG.defaultTarget}`;
+    console.log(`\n⚠️  将对 ${toPromote.length} 条 KB 执行毕业（${actionLabel}，${deleteSource ? '删除源' : '保留源'}）:\n`);
     for (const k of toPromote) {
       console.log(`  → ${k.title}`);
-      console.log(`    升: ${k.promoteTarget}`);
+      console.log(`    目标: ${promoteToAsset ? '.claude/prompt-assets/' : k.promoteTarget}`);
       console.log(`    源: ${deleteSource ? '删除' : '缩为 1 行 pointer'}`);
       console.log(`    原因: ${k.reason}\n`);
     }
@@ -252,14 +258,18 @@ function cmdApply({ deleteSource = false, target = null, kbFilter = null, confir
     return { toPromote, actionPlan: [], aborted: 'awaiting-confirm' };
   }
 
-  // 实际执行：缩源为 pointer + 追加到 docs/目标文件
+  // 实际执行：缩源为 pointer + 追加到 docs/目标文件 或 写入 prompt-asset
   console.log(`\n🔧 实际执行毕业（${toPromote.length} 条）:\n`);
   const actionPlan = [];
   for (const k of toPromote) {
     try {
-      shrinkKB(k, deleteSource);
-      actionPlan.push({ ...k, action: deleteSource ? 'delete' : 'shrink' });
-      console.log(`  ✅ ${k.title} → ${k.promoteTarget} (${deleteSource ? '删除源' : '缩 pointer'})`);
+      let assetPath = null;
+      if (promoteToAsset) {
+        assetPath = writeAsset(k);
+      }
+      shrinkKB(k, deleteSource, assetPath);
+      actionPlan.push({ ...k, action: deleteSource ? 'delete' : 'shrink', assetPath });
+      console.log(`  ✅ ${k.title} → ${assetPath || k.promoteTarget} (${deleteSource ? '删除源' : '缩 pointer'})`);
     } catch (err) {
       console.error(`  ❌ ${k.title}: ${err.message}`);
     }
@@ -270,13 +280,48 @@ function cmdApply({ deleteSource = false, target = null, kbFilter = null, confir
 }
 
 /**
+ * 把 KB 内容写入 .claude/prompt-assets/ 作为可复用 asset
+ * @param {object} kb
+ * @returns {string} 相对工作空间根的 asset 路径
+ */
+function writeAsset(kb) {
+  const slug = path.basename(kb.filePath, '.md').toLowerCase().replace(/^kb-\d{8}-\d+_?/, '');
+  const categoryDir = kb.category === '技术' ? 'system-prompts' :
+                      kb.category === '概念澄清' ? 'phase-prompts' : 'general';
+  const dir = path.join(PROMOTE_CONFIG.assetDir, categoryDir);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const assetFileName = `${slug}.v1.md`;
+  const assetPath = path.join(dir, assetFileName);
+  const relPath = path.relative(WORKSPACE_ROOT, assetPath).replace(/\\/g, '/');
+
+  const fmLines = [
+    '---',
+    `asset-type: ${categoryDir === 'system-prompts' ? 'system-prompt' : 'phase-prompt'}`,
+    'asset-version: 1.0.0',
+    `source: ${path.relative(WORKSPACE_ROOT, kb.filePath).replace(/\\/g, '/')}`,
+    `promoted-from: ${path.basename(kb.filePath, '.md')}`,
+    `promoted-at: ${new Date().toISOString().slice(0, 10)}`,
+    '---',
+    '',
+  ];
+
+  fs.writeFileSync(assetPath, fmLines.join('\n') + kb.content, 'utf8');
+  return relPath;
+}
+
+/**
  * 把 KB 缩为 1 行 pointer（不动 docs 目标文件 — docs 由 doc-sync 规则统一同步）
  *
  * pointer 格式：
  *   <!-- KB-YYYYMMDD-NNN 已毕业 @ YYYY-MM-DD → docs/02.md -->
  */
-function shrinkKB(kb, deleteSource) {
-  const pointerLine = `<!-- ${path.basename(kb.filePath, '.md')} 已毕业 @ ${new Date().toISOString().slice(0, 10)} → ${kb.promoteTarget} -->\n`;
+function shrinkKB(kb, deleteSource, assetPath = null) {
+  const target = assetPath || kb.promoteTarget;
+  const pointerLine = assetPath
+    ? PROMOTE_CONFIG.assetPointerTemplate(kb, assetPath)
+    : `<!-- ${path.basename(kb.filePath, '.md')} 已毕业 @ ${new Date().toISOString().slice(0, 10)} → ${target} -->\n`;
 
   if (deleteSource) {
     fs.unlinkSync(kb.filePath);
@@ -288,7 +333,7 @@ function shrinkKB(kb, deleteSource) {
 /**
  * dry-run：显示计划，不写任何文件
  */
-function cmdDryRun({ deleteSource = false, target = null, kbFilter = null }) {
+function cmdDryRun({ deleteSource = false, target = null, kbFilter = null, promoteToAsset = false }) {
   const all = listAllKBs();
   const repeat = buildRepeatMap(all);
   const filtered = kbFilter ? all.filter(k => k.filePath.includes(kbFilter)) : all;
@@ -298,10 +343,11 @@ function cmdDryRun({ deleteSource = false, target = null, kbFilter = null }) {
   });
   const toPromote = judged.filter(k => k.shouldPromote);
 
-  console.log(`\n🔍 [DRY-RUN] 将对 ${toPromote.length} 条 KB 执行毕业（不写文件）:\n`);
+  const actionLabel = promoteToAsset ? '写入 .claude/prompt-assets/' : `升 ${target || PROMOTE_CONFIG.defaultTarget}`;
+  console.log(`\n🔍 [DRY-RUN] 将对 ${toPromote.length} 条 KB 执行毕业（${actionLabel}，不写文件）:\n`);
   for (const k of toPromote) {
     console.log(`  → ${k.title}`);
-    console.log(`    升: ${k.promoteTarget}`);
+    console.log(`    目标: ${promoteToAsset ? '.claude/prompt-assets/' : k.promoteTarget}`);
     console.log(`    源: ${deleteSource ? '删除' : '缩为 1 行 pointer'}`);
     console.log(`    原因: ${k.reason}\n`);
   }
@@ -317,13 +363,14 @@ function cmdDryRun({ deleteSource = false, target = null, kbFilter = null }) {
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { mode: null, deleteSource: false, target: null, kbFilter: null, confirmed: false };
+  const opts = { mode: null, deleteSource: false, target: null, kbFilter: null, confirmed: false, promoteToAsset: false };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--report') opts.mode = 'report';
     else if (args[i] === '--dry-run') opts.mode = 'dry-run';
     else if (args[i] === '--apply') opts.mode = 'apply';
     else if (args[i] === '--yes') opts.confirmed = true;
     else if (args[i] === '--delete') opts.deleteSource = true;
+    else if (args[i] === '--promote-to-asset') opts.promoteToAsset = true;
     else if (args[i] === '--target' && args[i + 1]) { opts.target = args[++i]; }
     else if (args[i] === '--kb' && args[i + 1]) { opts.kbFilter = args[++i]; }
   }

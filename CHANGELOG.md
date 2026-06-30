@@ -50,6 +50,29 @@
 
 **关联**：[[prompt-optimizer-eval-2026]] · Phase 2 of "吸收借鉴 prompt-optimizer" roadmap
 
+### Added - M54 借鉴 prompt-optimizer：Prompt 资产化与版本化（2026-07-01）
+
+> **背景**：prompt-optimizer 把稳定提示词保存为"资源感知资产"，支持版本历史、可复现示例、来源绑定。AiCode 已有 `kb:promote` 毕业机制，但只缩源、不写 docs、无版本。本批建立 `.claude/prompt-assets/` 资产目录 + `prompt-asset-manager.js`，并把 `qa-reviewer.md` 作为试点拆分为可复用组件。
+
+- **`.claude/prompt-assets/`** — 新增 prompt 资产目录：
+  - `README.md` — 资产规范与目录说明
+  - `system-prompts/base-qa-system.v1.md` — QA 系统提示词基座
+  - `constraint-prompts/read-only-constraint.v1.md` — 只读/约束片段
+  - `report-templates/qa-report-template.v1.md` — QA 报告模板
+- **`.claude/agents/qa-reviewer.md`** — 新增 `composed-from` frontmatter，引用 3 个 prompt assets（body 保留完整内容作为 fallback）
+- **`scripts/knowledge/prompt-asset-manager.js`** — 新增资产管家：
+  - `list`：列出所有 asset
+  - `compose`：按 `composed-from` 拼合完整 prompt
+  - `diff`：对比 agent body 与拼合结果是否一致
+  - `bump`：升级 asset patch 版本号
+- **`scripts/knowledge/promote-kb.js`** — 支持 `--promote-to-asset`，把毕业 KB 写入 `.claude/prompt-assets/`
+- **`scripts/knowledge/test-prompt-asset-manager.js`** — 17 项测试覆盖 parseFrontmatter/list/compose/diff/bump
+- **`package.json`** — 新增 `prompt-asset:list` / `diff` / `bump` / `compose` / `test:prompt-asset`
+
+**验证**：`npm run test:prompt-asset` 17/17 通过；`npm run test:promote-kb` 17/17 通过
+
+**关联**：[[prompt-optimizer-eval-2026]] · Phase 3 of "吸收借鉴 prompt-optimizer" roadmap
+
 ### Changed - next 队列按优先级自动排序（2026-07-01）
 
 > **背景**：`evolution-plan.json` 中 `AUDIT-roadmap-item-skill`（P3）因最早入队排在 `next[0]`，但队列中还有 10 条 P0 真风险。`SessionStart` 虽已警告，但"做 next[0]"仍会指向低优先级项。

@@ -55,7 +55,8 @@ AiCode/
 │   ├── skills/autonomous/             ← 🤖 自主模式 skill（v3.0.5 M25 · /autonomous 升格）
 │   ├── skills/agent-reach/            ← 🌐 13 平台互联网路由（GitHub/B站/V2EX/RSS/任意网页）
 │   ├── commands/                      ← 常用命令
-│   └── agents/                        ← 专业子代理
+│   ├── agents/                        ← 专业子代理（v3.0.8+ 支持 composed-from 引用 prompt-assets）
+│   └── prompt-assets/                 ← 版本化 prompt 组件（M54 Phase 3）
 │
 ├── scripts/                           ← 核心自动化脚本
 │   ├── evolution/                     ← 🧬 自我进化系统（v1.8：每日扫描 GitHub 学习新能力；v3.0.5 M34：+ GEPA skill 自我进化原型）

@@ -147,6 +147,7 @@
 | **/go 一键交付** | `/go` 或 `npm run go` / `npm run go:dry` | 测试 → 简化 → 审查 → 提交 4 阶段流水线，失败立即停止（v3.0.5 M43，19/19 测试），详见 02 §2.35 |
 | **KB 分类质量** | `npm run kb:report` | 看 KB 分类分布 + 「其他」占比（v3.0.5 M45，49.3% → 4.2%）|
 | **KB 毕业机制** | `npm run kb:promote -- --report` | 借鉴 neat-freak：把稳定 KB 升 docs + 缩源为 pointer，治 memory 膨胀（v3.0.6 M48-A，17/17 测试）|
+| **Prompt 资产管理** | `npm run prompt-asset:list` | 列出/拼合/升级 `.claude/prompt-assets/` 中版本化 prompt 组件（v3.0.8 M54 Phase 3，17/17 测试）|
 | **MEMORY.md 体检** | `npm run memory:health` | 4 项硬约束（200/25KB + 单条 100 行 + 体量倒挂），超了 WARN/ERROR（v3.0.6 M48-D，15/15 测试）|
 | **深度研究（横纵双轴）** | `npm run deep-research -- analyze "对象名"` | 借鉴 hv-analysis：纵向 5 维度（时间）+ 横向 3 场景（同期对比）+ 交汇 5 核心问题（v3.0.7 M49，14/14 测试）|
 | **提示词优化闭环** | `npm run po:run -- --file .claude/agents/qa-reviewer.md --rounds 3` | 分析→评估→对比→智能改写，支持 LLM backend 与 heuristic fallback（v3.0.8 M54 Phase 2，22/22 测试）|
