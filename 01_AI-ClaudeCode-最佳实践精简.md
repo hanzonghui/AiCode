@@ -135,6 +135,7 @@
 | **cron 主动报告** | `npm run cron:report:daily` / `weekly` / `status` | 后台定时日报（9:37）+ 周报（周一 9:42），无人值守期间主动汇报 |
 | **工作流建议** | `/workflow` / `/workflow learn` / `/workflow status` | session-init Step 9 自动展示"接下来该做什么" |
 | **工程自查/审计** | `/audit` 或 `npm run audit` | 6 段浅层报告（工程画像/已完成/未完成/缺口/重复/建议），可一键整合到 04 backlog（详见 02 §2.25） |
+| **MCP 外部调用审计** | `npm run mcp:audit` | 把 `/audit` 能力暴露为 MCP tool，Claude Desktop 等 MCP 客户端可直接调用（借鉴 prompt-optimizer MCP 服务化模式 · v3.0.8+） |
 | **多 Agent Swarm 协调** | `npm run swarm:demo` 或 `npm run swarm:run 任务 --n=3` | 多视角生成 + 投票汇总（v3.0.5 M31 POC），详见 02 §2.X |
 | **SKILL 生态索引** | 看 `.claude/SKILL_INDEX.md` | 6 skill（left-brain/audit/autonomous/evolve/ui-skill-installer/go）总览 + 5 场景脚本（M32 + M43），0 启动成本 |
 | **SKILL 自我进化（GEPA）** | `/evolve self-evolve` 或 `npm run gepa:evolve` | 借鉴 Hermes GEPA 思路，基于 execution traces 自动迭代 SKILL.md（M34 · 加 `--apply` 才覆盖），详见 02 §2.X |

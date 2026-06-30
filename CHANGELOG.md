@@ -10,6 +10,21 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Added - M54 借鉴 prompt-optimizer：MCP 服务化 /audit（2026-07-01）
+
+> **背景**：prompt-optimizer 把提示词优化能力封装为 MCP tools（optimize-user-prompt / optimize-system-prompt / iterate-prompt），让 Claude Desktop 等 MCP 客户端可直接调用。AiCode 已具备 MCP 基础设施，先把最成熟、只读的 `/audit` 能力 MCP 服务化，作为吸收借鉴的第一步。
+
+- **`scripts/mcp/audit-server.js`** — 新增 MCP server，暴露 `audit` tool（参数 `depth: quick|full`, `format: text|json`）
+  - `quick`：调用 `quick-audit.js`，1-2 分钟返回工程健康报告
+  - `full`：调用 `full-audit.js`，生成 9 子系统深度调研任务清单
+  - 复用 `scripts/mcp/_shared.js` 统一错误处理、metrics、logs
+- **`package.json`** — 新增 `mcp:audit` npm script
+- **`scripts/mcp/test-audit-server.js`** — 新增 14 项 MCP 集成测试（listTools / quick/json / full/json / quick/text）
+
+**验证**：`npm run test:mcp` 全过（6 + 4 + 7 + 13 + 14 = 44/44）
+
+**关联**：[[prompt-optimizer-eval-2026]] · Phase 1 of "吸收借鉴 prompt-optimizer" roadmap
+
 ### Changed - next 队列按优先级自动排序（2026-07-01）
 
 > **背景**：`evolution-plan.json` 中 `AUDIT-roadmap-item-skill`（P3）因最早入队排在 `next[0]`，但队列中还有 10 条 P0 真风险。`SessionStart` 虽已警告，但"做 next[0]"仍会指向低优先级项。
