@@ -10,6 +10,19 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Added - M49+3 deep-research 6 段方法论闭环（2026-06-30）
+
+- **`scripts/orchestrator/deep-research.js`** — deep-research 升级：4 段 → 6 段方法论闭环
+  - `loadObject` 加 4 字段：`pain_points` / `opportunities` / `risks`（带 probability/impact） / `actions_by_persona`（4 类人群）
+  - 新增 `renderOpportunitiesRisks(obj)` 渲染 5.1/5.2/5.3 三子段
+  - 新增 `renderActions(obj)` 渲染 6.1-6.4 四类人群行动建议
+  - `generateReport` 接入 2 个新段，编号 6→8（信息来源 + 方法论说明后移）
+  - `module.exports` 暴露 2 个新函数
+- **`scripts/orchestrator/test-deep-research.js`** — 加 6 个 M49+3 测试 case：loadObject 4 字段（默认值 + 接受参数）+ renderOpportunitiesRisks（0 字段占位符 + 完整数据）+ renderActions（0 字段占位符 + 完整数据）+ 段位连贯性。**14 → 21 测试全过**。
+- **数据模型 4 新字段**：`pain_points` / `opportunities` / `risks` / `actions_by_persona`
+- **方法论来源**：卡兹克 2026-06 公众号文章 md 版（`H:\AI-han\分享我用了 2 年的深度研究 Prompt.md` §模块 4-5）
+- **关联**：KB `KB-20260630-001-khazix-skills-eval-2026` §候选 C · 02.md §2.X M49 段 · 04.md §0.4 M49+3
+
 ### Fixed - M54 /audit full 深度审计 P0 批次（2026-06-29）
 
 > **背景**：/audit full 派 9 个 explorer 子代理并发调研（dispatcher / evolution / left-brain / autonomous / proactive / workflow / planning / reflection / recall），挖出 26 个具体问题集中在 5 大共性主题（文档-工程不一致 / 观察链断裂 / 默认参数不合理 / 状态机并发竞态 / 过设计）。本批先做 4 个真风险 / 快赢 P0：

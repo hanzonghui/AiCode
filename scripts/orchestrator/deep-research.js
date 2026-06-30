@@ -75,6 +75,10 @@ const METHODOLOGY = {
     '砍掉"卡兹克文风"（个人公众号风格不适合工程文档）',
     '保留方法论：双轴 + 三段结构 + 子场景判断',
     '适配 AiCode 风格：纯函数 + 模板 + 用户填数据',
+    // M49+3 (2026-06-30): 方法论闭环
+    'M49+3 新增 "机遇/风险/痛点" 模块（来源：卡兹克公众号 Prompt）',
+    'M49+3 新增 "分人群落地行动建议" 模块（来源：卡兹克公众号 Prompt）',
+    '段位：4 段 (定义/纵向/横向/交汇) -> 6 段 (+ 机遇风险/行动建议)',
   ],
 };
 
@@ -94,6 +98,16 @@ function loadObject(name, data = null) {
     advantage_roots: data?.advantage_roots || [],
     disadvantage_roots: data?.disadvantage_roots || [],
     future_scenarios: data?.future_scenarios || [],
+    // M49+3: 方法论闭环 - 机遇/风险/痛点 + 行动建议
+    pain_points: data?.pain_points || [],
+    opportunities: data?.opportunities || [],
+    risks: data?.risks || [],
+    actions_by_persona: data?.actions_by_persona || {
+      entrepreneur: '',
+      practitioner: '',
+      learner: '',
+      investor: '',
+    },
   };
 }
 
@@ -204,6 +218,71 @@ function renderIntersection(obj) {
   lines.push(``, `**字数参考**：${METHODOLOGY.axes.intersection.recommended_length}`, ``);
   return lines.join('\n');
 }
+/**
+ * 生成机遇/风险/痛点段 (M49+3: 方法论闭环)
+ */
+function renderOpportunitiesRisks(obj) {
+  const lines = [
+    `## 五、机遇 / 风险 / 痛点`,
+    ``,
+    `> **本段方法**: 在纵向 + 横向 + 交汇洞察的基础上, 归纳行业现存痛点、未来机遇、潜在风险. 这是"行业研究"的实用价值段, 区别于学术研究的纯描述.`,
+    ``,
+    `### 5.1 行业现存痛点 / 局限性`,
+  ];
+  if (obj.pain_points.length === 0) {
+    lines.push('[待填] 行业尚未解决的核心痛点 + 现存局限性', '');
+  } else {
+    obj.pain_points.forEach((p, i) => {
+      lines.push(`${i + 1}. **${p.title || '[痛点]'}** -- ${p.detail || '[描述]'}`);
+    });
+    lines.push('');
+  }
+  lines.push(`### 5.2 未来增长机遇 / 增量市场`);
+  if (obj.opportunities.length === 0) {
+    lines.push('[待填] 增量市场空间 + 技术拐点 + 政策红利 + 用户需求未被满足的场景', '');
+  } else {
+    obj.opportunities.forEach((o, i) => {
+      lines.push(`${i + 1}. **${o.title || '[机遇]'}** -- ${o.detail || '[描述]'}`);
+    });
+    lines.push('');
+  }
+  lines.push(`### 5.3 政策 / 技术 / 市场潜在风险`);
+  if (obj.risks.length === 0) {
+    lines.push('[待填] 政策风险 + 技术替代风险 + 市场萎缩风险 + 竞品打压风险', '');
+  } else {
+    obj.risks.forEach((r, i) => {
+      lines.push(`${i + 1}. **${r.title || '[风险]'}** -- ${r.detail || '[描述]'} | 概率: ${r.probability || '?'} | 影响: ${r.impact || '?'}`);
+    });
+    lines.push('');
+  }
+  lines.push(`**字数参考**: 1000-3000 字 (行业研究必含维度)`, ``);
+  return lines.join('\n');
+}
+
+/**
+ * 生成落地行动建议段 (M49+3: 分人群)
+ */
+function renderActions(obj) {
+  const lines = [
+    `## 六、落地行动建议`,
+    ``,
+    `> **本段方法**: 基于全报告的综合洞察, 分 4 类典型人群给具体的"今天/本周/本月能做什么"建议. 不写空洞建议, 写"用什么工具、查什么资料、找谁聊、避什么坑".`,
+    ``,
+    `### 6.1 创业者 (entrepreneur)`,
+    obj.actions_by_persona.entrepreneur || '[待填] 针对创业者的具体建议: 切入点 + 资源建议 + 避坑清单',
+    ``,
+    `### 6.2 从业者 (practitioner)`,
+    obj.actions_by_persona.practitioner || '[待填] 针对从业者的具体建议: 技能升级 + 转型方向 + 人脉扩展',
+    ``,
+    `### 6.3 学习者 (learner)`,
+    obj.actions_by_persona.learner || '[待填] 针对学习者的具体建议: 入门路径 + 必读书单 + 实战项目',
+    ``,
+    `### 6.4 投资人 (investor)`,
+    obj.actions_by_persona.investor || '[待填] 针对投资人的具体建议: 评估维度 + 标的清单 + 退出时机',
+    ``,
+    `**字数参考**: 1000-2000 字 (4 类人群 * 200-500 字)`, ``];
+  return lines.join('\n');
+}
 
 /**
  * 生成完整报告框架
@@ -234,13 +313,19 @@ function generateReport(obj) {
     renderIntersection(obj),
     `---`,
     ``,
-    `## 五、信息来源`,
+    renderOpportunitiesRisks(obj),
+    `---`,
+    ``,
+    renderActions(obj),
+    `---`,
+    ``,
+    `## 七、信息来源`,
     ``,
     `[待填] 所有引用 URL + 访问时间`,
     ``,
-    `## 六、方法论说明`,
+    `## 八、方法论说明`,
     ``,
-    `${METHODOLOGY.origin}。本报告采用横纵双轴分析：纵向追时间深度，横向追同期广度，最后交叉两条轴产出洞察。`,
+    `${METHODOLOGY.origin}。本报告采用横纵双轴分析：纵向追时间深度，横向追同期广度，最后交叉两条轴产出洞察。M49+3 升级追加"机遇/风险/痛点"与"分人群落地行动建议"2 模块（方法论闭环）。来源：卡兹克公众号通用 Prompt。`,
   ].join('\n');
 }
 
@@ -359,4 +444,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { generateReport, loadObject, renderVertical, renderHorizontal, renderIntersection, METHODOLOGY };
+module.exports = { generateReport, loadObject, renderVertical, renderHorizontal, renderIntersection, renderOpportunitiesRisks, renderActions, METHODOLOGY };

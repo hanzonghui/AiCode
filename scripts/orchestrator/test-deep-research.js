@@ -126,8 +126,10 @@ test('generateReport 含 6 段', () => {
   assert(report.includes('## 二、纵向分析'), '段 2');
   assert(report.includes('## 三、横向分析'), '段 3');
   assert(report.includes('## 四、横纵交汇'), '段 4');
-  assert(report.includes('## 五、信息来源'), '段 5');
-  assert(report.includes('## 六、方法论说明'), '段 6');
+  assert(report.includes('## 五、机遇 / 风险 / 痛点'), '段 5 (M49+3 新增)');
+  assert(report.includes('## 六、落地行动建议'), '段 6 (M49+3 新增)');
+  assert(report.includes('## 七、信息来源'), '段 7');
+  assert(report.includes('## 八、方法论说明'), '段 8');
 });
 
 test('generateReport 中 [待填] 占位符', () => {
@@ -209,6 +211,116 @@ test('CLI from-data 从真实 JSON 生成报告', () => {
   assert(r.stdout.includes('竞品 A'), '含竞品');
   fs.unlinkSync(tmp);
 });
+// 12. M49+3 loadObject 4 字段默认值
+test('M49+3 loadObject 默认 4 字段', () => {
+  const o = dr.loadObject('X');
+  assert(Array.isArray(o.pain_points), 'pain_points 是数组');
+  assertEq(o.pain_points.length, 0, 'pain_points 空');
+  assert(Array.isArray(o.opportunities), 'opportunities 是数组');
+  assert(Array.isArray(o.risks), 'risks 是数组');
+  assert(o.actions_by_persona, 'actions_by_persona 存在');
+  assertEq(o.actions_by_persona.entrepreneur, '', 'entrepreneur 默认空');
+  assertEq(o.actions_by_persona.practitioner, '', 'practitioner 默认空');
+  assertEq(o.actions_by_persona.learner, '', 'learner 默认空');
+  assertEq(o.actions_by_persona.investor, '', 'investor 默认空');
+});
+
+test('M49+3 loadObject 接受 4 字段', () => {
+  const data = {
+    pain_points: [{ title: '贵', detail: '价格高' }],
+    opportunities: [{ title: 'AI 化', detail: 'AI 转型' }],
+    risks: [{ title: '政策', detail: '监管收紧', probability: '中', impact: '高' }],
+    actions_by_persona: { entrepreneur: '切入 X 场景' },
+  };
+  const o = dr.loadObject('X', data);
+  assertEq(o.pain_points.length, 1, 'pain_points 1 条');
+  assertEq(o.pain_points[0].title, '贵', 'pain_points[0].title');
+  assertEq(o.opportunities[0].title, 'AI 化', 'opportunities[0].title');
+  assertEq(o.risks[0].probability, '中', 'risks[0].probability');
+  assertEq(o.actions_by_persona.entrepreneur, '切入 X 场景', 'entrepreneur 字段');
+});
+
+// 13. M49+3 renderOpportunitiesRisks 0 字段占位符
+test('M49+3 renderOpportunitiesRisks 0 字段', () => {
+  const o = dr.loadObject('X');
+  const out = dr.renderOpportunitiesRisks(o);
+  assert(out.includes('## 五、机遇 / 风险 / 痛点'), '标题');
+  assert(out.includes('5.1'), '5.1 子段');
+  assert(out.includes('5.2'), '5.2 子段');
+  assert(out.includes('5.3'), '5.3 子段');
+  assert(out.includes('[待填]'), '有占位符');
+  assert(out.includes('行业现存痛点'), '痛点说明');
+  assert(out.includes('未来增长机遇'), '机遇说明');
+  assert(out.includes('潜在风险'), '风险说明');
+  assert(out.includes('1000-3000'), '字数参考');
+});
+
+// 14. M49+3 renderOpportunitiesRisks 完整数据
+test('M49+3 renderOpportunitiesRisks 完整数据', () => {
+  const o = dr.loadObject('X', {
+    pain_points: [{ title: '价格高', detail: '中等收入用户门槛' }],
+    opportunities: [{ title: 'AI 集成', detail: 'AI 重塑行业' }],
+    risks: [{ title: '政策', detail: '合规风险', probability: '中', impact: '高' }],
+  });
+  const out = dr.renderOpportunitiesRisks(o);
+  assert(out.includes('价格高'), 'pain_point 标题');
+  assert(out.includes('中等收入用户门槛'), 'pain_point 详情');
+  assert(out.includes('AI 集成'), 'opportunity 标题');
+  assert(out.includes('AI 重塑行业'), 'opportunity 详情');
+  assert(out.includes('政策'), 'risk 标题');
+  assert(out.includes('概率: 中'), 'risk probability');
+  assert(out.includes('影响: 高'), 'risk impact');
+});
+
+// 15. M49+3 renderActions 0 字段 + 完整字段
+test('M49+3 renderActions 0 字段占位符', () => {
+  const o = dr.loadObject('X');
+  const out = dr.renderActions(o);
+  assert(out.includes('## 六、落地行动建议'), '标题');
+  assert(out.includes('6.1 创业者'), '6.1 子段');
+  assert(out.includes('6.2 从业者'), '6.2 子段');
+  assert(out.includes('6.3 学习者'), '6.3 子段');
+  assert(out.includes('6.4 投资人'), '6.4 子段');
+  assert(out.includes('[待填]'), '有占位符');
+  assert(out.includes('1000-2000'), '字数参考');
+});
+
+test('M49+3 renderActions 完整数据', () => {
+  const o = dr.loadObject('X', {
+    actions_by_persona: {
+      entrepreneur: '切入 SaaS 化场景',
+      practitioner: '学 AI 工具 + 转岗',
+      learner: '读 3 本书 + 跟 1 个项目',
+      investor: '关注 A 轮标的',
+    },
+  });
+  const out = dr.renderActions(o);
+  assert(out.includes('切入 SaaS 化场景'), 'entrepreneur 建议');
+  assert(out.includes('学 AI 工具 + 转岗'), 'practitioner 建议');
+  assert(out.includes('读 3 本书'), 'learner 建议');
+  assert(out.includes('A 轮标的'), 'investor 建议');
+});
+
+// 16. M49+3 段位连贯性
+test('M49+3 段位连贯性', () => {
+  const o = dr.loadObject('Claude Code', {
+    pain_points: [{ title: '贵', detail: 'x' }],
+    opportunities: [{ title: 'AI', detail: 'y' }],
+    risks: [{ title: '政策', detail: 'z', probability: '中', impact: '高' }],
+    actions_by_persona: { entrepreneur: '做 X', practitioner: '做 Y', learner: '做 Z', investor: '做 W' },
+  });
+  const report = dr.generateReport(o);
+  const idxIntersection = report.indexOf('## 四、横纵交汇');
+  const idxOpportunity = report.indexOf('## 五、机遇 / 风险 / 痛点');
+  const idxActions = report.indexOf('## 六、落地行动建议');
+  const idxSource = report.indexOf('## 七、信息来源');
+  assert(idxIntersection < idxOpportunity, '交汇在机遇风险前');
+  assert(idxOpportunity < idxActions, '机遇风险在行动建议前');
+  assert(idxActions < idxSource, '行动建议在信息来源前');
+  assert(report.includes('切入 SaaS 化场景') || report.includes('做 X'), 'action 数据在报告里');
+});
+
+
 
 console.log('\n' + '='.repeat(50));
 console.log('总计: ' + (pass + fail) + ' · 通过: ' + pass + ' · 失败: ' + fail);
