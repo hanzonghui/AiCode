@@ -196,66 +196,23 @@ function sync() {
 
   const md = fs.readFileSync(ROADMAP_MD, 'utf8');
   const next = loadNext();
-  const nextIds = new Set(next.map(e => e.id));
   const historyIds = new Set(loadHistory().map(e => e.id));
-  const tableIds = new Set(extractIdsFromPlanned(md));
 
-  // 1. 计算 diff
-  const toAdd = next.filter(e => !tableIds.has(e.id));
-  // 已完成的（history 里有）从 ⏳ 段删除
-  const toRemove = [...tableIds].filter(id => !nextIds.has(id));
+  // 2026-06-30: §十二 ⏳ 段已改为 P0/P3 分组表，不再自动追加/删除 table 行
+  // 只同步顶部元数据 + 当前队列状态文字，⏳ 段 table 由人工维护
 
-  if (toAdd.length === 0 && toRemove.length === 0) {
-    result.message = '已同步，无需变更';
-    return result;
-  }
-
-  // 2. 应用 diff 到 md
-  let updatedMd = md;
-
-  // 2.1 移除（仅当 next 也没有、history 也没有 = 完全消失）
-  if (toRemove.length > 0) {
-    const lines = updatedMd.split('\n');
-    const region = findPlannedTableRegion(updatedMd);
-    if (region.end !== -1) {
-      for (let i = region.end - 1; i >= region.start; i--) {
-        const m = lines[i].match(/^\|\s*\*\*([^*]+)\*\*\s*\|/);
-        if (m && toRemove.includes(m[1])) {
-          lines.splice(i, 1);
-          result.removed.push(m[1]);
-        }
-      }
-      updatedMd = lines.join('\n');
-    }
-  }
-
-  // 2.2 追加新条目
-  if (toAdd.length > 0) {
-    const newRows = toAdd.map(buildPlannedRow).join('\n');
-    const region = findPlannedTableRegion(updatedMd);
-    if (region.end !== -1) {
-      const lines = updatedMd.split('\n');
-      lines.splice(region.end, 0, newRows);
-      updatedMd = lines.join('\n');
-      result.added = toAdd.map(e => e.id);
-    }
-  }
-
-  // 2.3 改顶部"最近一次同步" + "next 队列状态"
-  const newCount = tableIds.size;  // 04.md ⏳ 段实际行数（最权威）
-  // 2.4 用 §十二 ✅ 段实际行数算（避免 history 截断 20 导致不一致）
-  const completedSection = findCompletedSection(updatedMd);
+  const newCount = next.length;
+  const completedSection = findCompletedSection(md);
   const completedCount = completedSection?.lineCount || historyIds.size;
-  const total = newCount + completedCount;
   const evoCount = next.filter(e => e.id.startsWith('EVOLVE-')).length;
   const auditCount = next.filter(e => e.id.startsWith('AUDIT-')).length;
   const researchCount = next.filter(e => e.id.startsWith('RESEARCH-')).length;
   const manualCount = next.length - evoCount - auditCount - researchCount;
 
-  updatedMd = findAndReplaceTopMeta(updatedMd, [
+  let updatedMd = findAndReplaceTopMeta(md, [
     {
       pattern: /(\*\*最近一次同步\*\*：)[\d-]+(.*?)$/m,
-      replacement: `$1${now().slice(0, 10)} (v3.0.5 M24 sync-roadmap 自动同步：${result.added.length} 新增 / ${result.removed.length} 删除；上一条：手动同步 M24 入队)`,
+      replacement: `$1${now().slice(0, 10)} (v3.0.5 M24 sync-roadmap 自动同步顶部元数据；⏳ 段 table 由人工维护)`,
     },
     {
       pattern: /(\*\*当前 `next` 队列状态\*\*：)[^|]+$/m,
@@ -263,13 +220,9 @@ function sync() {
     },
   ]);
 
-  // 2.4 改"状态统计"段 — 注释：sync 触发多次会覆盖状态，已让 AI 手动维护
-  //    （只 sync ⏳ 段 table + 顶部时间戳，避免 race condition）
-  // const statsLine = findStatusStats(updatedMd);
-  // if (statsLine !== -1) { ... }
-
   result.updated = updatedMd !== md;
   result.newMd = updatedMd;
+  result.message = result.updated ? '已同步顶部元数据' : '无需变更';
   return result;
 }
 

@@ -499,8 +499,13 @@ function enqueueNext(id, title, note) {
   try {
     const planPath = AUTONOMOUS_STATE_FILE.replace('autonomous-state.json', 'evolution-plan.json');
     const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
-    // 已存在不重复入队
-    if (plan.next.find(x => x.id === id) || (plan.current && plan.current.id === id)) {
+    // 已存在不重复入队（包括 id 完全匹配 或 是已有 id 的前缀/子串）
+    const alreadyExists = plan.next.some(x => {
+      if (x.id === id) return true;
+      if (id.includes(x.id) || x.id.includes(id)) return true;
+      return false;
+    });
+    if (alreadyExists || (plan.current && plan.current.id === id)) {
       return false;
     }
     const result = execFileSync('node', [
