@@ -15,15 +15,15 @@
 
 ---
 
-## 🔐 两层锁机制（L3 设计中 · 工程未实现）
+## 🔐 三层锁机制
 
-| 层 | 机制 | 谁执行 | 失败怎么办 |
-|:---|:-----|:-------|:----------|
-| **L1 软锁** | 窗口启动读 `evolution-plan.json`，看到 `current.owner` 是别人 → 提示「X 正在做 M13，要不要等/换任务」 | Claude 主动检查 | 不强制，AI 自觉 |
-| **L2 文件锁** | 写文件前先 `evolution-lock.js acquire`，原子写入 `current.owner + locked_at` | 脚本/Claude | 锁 5 分钟超时自动释放（可被接管） |
-| **L3 hook 强制** | PostToolUse hook 拦截 Edit/Write，如文件不在 `current.allowed_docs` → 拒绝并提示 | Claude Code 钩子系统 | 强制，绕过需 `--no-verify` | ⏳ **设计目标（M54 D 主题 2026-06-29 决策：工程未实现）** |
+| 层 | 机制 | 谁执行 | 状态 |
+|:---|:-----|:-------|:----:|
+| **L1 软锁** | 窗口启动读 `evolution-plan.json`，看到 `current.owner` 是别人 → 提示「X 正在做 M13，要不要等/换任务」 | Claude 主动检查 | ✅ |
+| **L2 文件锁** | 写文件前先 `evolution-lock.js acquire`，原子写入 `current.owner + locked_at` | 脚本/Claude | ✅ |
+| **L3 hook 强制** | PostToolUse hook 调用 `evolution-lock.js guard-posttool`；Edit/Write 目标文件不在 `current.allowed_docs` → 记录违规并提示 | `posttool-hook.sh` 引擎 D | ✅（M54 D · 2026-07-01）|
 
-**L1 是关键**。L2 是兜底。L3 是**未来目标**——若需强制，参考 `plan-detect.js` 的 PostToolUse 钩子在 `.githooks/posttool-hook.sh` 加 5 行 allowed_docs 检查（不在本次增量范围；候选 `AUDIT-M54-batch2-D-autonomous-l3` 仍在 next 列表）。
+**L1 是关键**。L2 是兜底。L3 是**自动兜底**：每次 Claude 调用 `Edit`/`Write` 后，`posttool-hook.sh` 都会把 hook 数据传给 `guard-posttool`，若当前锁的 `allowed_docs` 非空且目标文件未命中，则写入 `evolution-lock-violations.jsonl` 并打印告警。
 
 ---
 
@@ -44,8 +44,8 @@
 ## 🔁 工作流（acquire → work → complete）
 
 ```bash
-# 1. 申请锁
-node scripts/orchestrator/evolution-lock.js acquire P0-0-evo-governance "main-session-20260625" "演进治理基础设施"
+# 1. 申请锁（带 allowed_docs）
+node scripts/orchestrator/evolution-lock.js acquire P0-0-evo-governance "main-session-20260625" "演进治理基础设施" --allowed-docs "scripts/orchestrator/evolution-lock.js,scripts/orchestrator/test-evolution-lock.js"
 
 # 2. 工作（只能动 current.allowed_docs 里的文件 + scope 目录）
 #    04.md / CLAUDE.md 等纲领文档默认不写 allowed_docs

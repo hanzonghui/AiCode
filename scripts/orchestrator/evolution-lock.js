@@ -93,6 +93,80 @@ function isStale(current) {
   return Date.now() - lockedAt > LOCK_TIMEOUT_MS;
 }
 
+// ── L3 allowed_docs 强制校验（PostToolUse hook）────────────────────
+
+const VIOLATIONS_FILE = path.join(MEMORY_DIR, 'evolution-lock-violations.jsonl');
+
+/**
+ * 判断文件是否命中 allowed_docs 规则
+ * 支持：
+ *   - 精确相对路径（如 scripts/orchestrator/evolution-lock.js）
+ *   - 目录前缀（如 scripts/orchestrator/** 或 scripts/orchestrator/）
+ * @param {string} filePath
+ * @param {string[]} allowedDocs
+ * @returns {boolean}
+ */
+function isAllowedDoc(filePath, allowedDocs) {
+  if (!filePath) return true; // 无法识别路径时不误伤
+  if (!Array.isArray(allowedDocs) || allowedDocs.length === 0) return true; // 无限制即放行
+
+  const normalized = filePath.replace(/\\/g, '/');
+  return allowedDocs.some(rule => {
+    const r = rule.replace(/\\/g, '/').trim();
+    if (!r) return false;
+    if (r === normalized) return true;
+    if (r.endsWith('/**')) {
+      const prefix = r.slice(0, -3);
+      return normalized === prefix || normalized.startsWith(prefix + '/');
+    }
+    if (r.endsWith('/')) {
+      return normalized.startsWith(r);
+    }
+    return false;
+  });
+}
+
+function appendViolation(entry) {
+  try {
+    ensureDir(MEMORY_DIR);
+    fs.appendFileSync(VIOLATIONS_FILE, JSON.stringify(entry) + '\n');
+  } catch { /* 写失败不阻塞 */ }
+}
+
+/**
+ * 从 PostToolUse hook 数据校验 allowed_docs
+ * @param {object} hookData { tool_use_name, tool_input }
+ * @returns {object|null} 违规对象；无违规返回 null
+ */
+function guardPostToolUse(hookData) {
+  if (!hookData || !hookData.tool_use_name) return null;
+  const toolName = hookData.tool_use_name;
+  if (toolName !== 'Edit' && toolName !== 'Write') return null;
+
+  const toolInput = hookData.tool_input || {};
+  const filePath = toolInput.file_path || toolInput.path || null;
+  if (!filePath) return null;
+
+  const state = loadState();
+  if (!state.current) return null;
+  const allowedDocs = state.current.allowed_docs;
+  if (!Array.isArray(allowedDocs) || allowedDocs.length === 0) return null;
+
+  if (isAllowedDoc(filePath, allowedDocs)) return null;
+
+  const violation = {
+    ts: new Date().toISOString(),
+    lock_id: state.current.id,
+    lock_title: state.current.title,
+    owner: state.current.owner,
+    tool: toolName,
+    file_path: filePath,
+    allowed_docs: allowedDocs,
+  };
+  appendViolation(violation);
+  return violation;
+}
+
 /**
  * 按优先级排序 next 队列（P0 > P1 > P2 > P3，同优先级按入队时间先后）
  * @param {object[]} next
@@ -296,11 +370,45 @@ if (require.main === module) {
         }
         break;
       }
+      case 'guard-posttool': {
+        // 从文件或 stdin 读取 PostToolUse JSON，校验 allowed_docs
+        let input = '';
+        const fileArg = process.argv[3];
+        try {
+          if (fileArg) {
+            input = fs.readFileSync(fileArg, 'utf8');
+          } else {
+            input = fs.readFileSync(0, 'utf8');
+          }
+        } catch { /* 读失败不阻塞 */ }
+        try {
+          const hookData = JSON.parse(input || '{}');
+          const v = guardPostToolUse(hookData);
+          if (v) {
+            console.log(`🚫 [evolution-lock] 文件不在 allowed_docs 中: ${v.file_path}`);
+            console.log(`   当前锁: ${v.lock_id} | 允许文档: ${v.allowed_docs.join(', ')}`);
+          }
+        } catch {
+          // 任何异常都静默，避免阻塞主流程
+        }
+        break;
+      }
       case 'acquire': {
-        if (!arg1) { console.log('❌ 用法: acquire <id> [owner] [title]'); break; }
-        const r = acquire(arg1, arg2 || 'unknown', { title: arg3 || arg1 });
+        if (!arg1) { console.log('❌ 用法: acquire <id> [owner] [title] [--allowed-docs a,b,c]'); break; }
+        // 解析 --allowed-docs a,b,c（可出现在任意位置）
+        const allowedDocs = [];
+        for (let i = 3; i < process.argv.length; i++) {
+          if (process.argv[i] === '--allowed-docs' && process.argv[i + 1]) {
+            allowedDocs.push(...process.argv[i + 1].split(',').map(s => s.trim()).filter(Boolean));
+            i++;
+          }
+        }
+        // title 取第一个非 flag 参数；缺省用 id
+        const title = (arg3 && !arg3.startsWith('-')) ? arg3 : arg1;
+        const r = acquire(arg1, arg2 || 'unknown', { title, allowed_docs: allowedDocs });
         if (r.acquired) {
-          console.log(`✅ 锁已获取: ${arg1} (owner=${arg2 || 'unknown'})`);
+          const extra = allowedDocs.length > 0 ? `, allowed_docs=[${allowedDocs.join(', ')}]` : '';
+          console.log(`✅ 锁已获取: ${arg1} (owner=${arg2 || 'unknown'}${extra})`);
         } else {
           console.log(`❌ ${r.reason}`);
         }
@@ -345,15 +453,17 @@ if (require.main === module) {
       }
       default: {
         console.log(`
-evolution-lock.js v1.0.0 — 演进计划锁（P0-0 元能力）
+evolution-lock.js v1.1.0 — 演进计划锁（P0-0 元能力）
 
 用法:
   status                       查看当前锁状态
-  acquire <id> [owner] [title] 申请锁（如被占用会失败）
+  acquire <id> [owner] [title] [--allowed-docs a,b,c]
+                               申请锁（如被占用会失败）
   release [id]                 释放锁（id 省略则释放 current）
   complete <id> [summary]      标记完成（自动 release + 写 history）
   queue <id> [title] [note]    追加候选到 next
   peek <id>                    查看某阶段详情
+  guard-posttool [file]        PostToolUse hook 校验 allowed_docs
   init                         强制初始化空状态文件
 
 状态文件: ${STATE_FILE}
@@ -378,6 +488,9 @@ module.exports = {
   loadState,
   saveState,
   sortNextByPriority,
+  isAllowedDoc,
+  guardPostToolUse,
   STATE_FILE,
+  VIOLATIONS_FILE,
   LOCK_TIMEOUT_MS,
 };

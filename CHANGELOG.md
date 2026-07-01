@@ -29,6 +29,26 @@
 
 **关联**：AUDIT-M54-batch2-D-runner-pid
 
+### Added - AUDIT-M54-batch2-D：L3 allowed_docs 演进锁强制校验（2026-07-01）
+
+> **背景**：`evolution-lock.js` 已有 L1 软锁（窗口自觉）和 L2 文件锁（acquire/release），但缺少 L3 强制兜底 —— 多窗口场景下仍可能误写不在 `allowed_docs` 里的文件，导致 04.md / CLAUDE.md / CHANGELOG 等纲领文档漂移。
+
+- **`scripts/orchestrator/evolution-lock.js`** — 新增 L3 校验能力
+  - `isAllowedDoc(filePath, allowedDocs)`：支持精确路径 + `dir/**` 目录前缀匹配，反斜杠归一化
+  - `guardPostToolUse(hookData)`：从 PostToolUse JSON 提取 `tool_use_name` 与 `tool_input.file_path/path`，仅对 `Edit`/`Write` 校验；无锁或 `allowed_docs` 为空时放行；违规写入 `.claude/skills/left-brain/memory/evolution-lock-violations.jsonl`
+  - CLI 新增 `acquire ... --allowed-docs a,b,c` 与 `guard-posttool [file]` 命令
+  - 版本号升级到 v1.1.0
+- **`.claude/skills/left-brain/scripts/posttool-hook.sh`** — 新增引擎 D：PostToolUse 后调用 `evolution-lock.js guard-posttool`，实现 hook 层自动拦截/告警
+- **`scripts/orchestrator/test-evolution-lock.js`** — 新增 3 项测试：维度 13 `isAllowedDoc` 匹配规则、维度 14 `guardPostToolUse` 通过/拒绝/无锁、维度 15 CLI `acquire --allowed-docs`
+- **`.claude/rules/evolution-lock.md`** — 锁机制表更新为「三层」，L3 hook 强制标记为 ✅ 已实现
+
+**验证**：
+- `node scripts/orchestrator/test-evolution-lock.js` 15/15 通过
+- `npm run doc:check` 36/0/1
+- `npm test` 全绿除预存在 recall 失败 1 条（`test-semantic-recall.js` 不存在的查询返回空）
+
+**关联**：AUDIT-M54-batch2-D-autonomous-l3
+
 ### Fixed - AUDIT-M54-batch2-B：补 PostToolUse hook 自动埋点 workflow 事件（2026-07-01）
 
 > **背景**：`.claude/settings.json` 已注册 PostToolUse → `posttool-hook.sh`，但该脚本只跑 self-reflect + plan-detect，从未调用 `workflow-observer.js`，导致 97% 生产数据只有 session_start/end，`file_modified`/`command_run`/`test_run`/`commit` 全靠手动埋点。

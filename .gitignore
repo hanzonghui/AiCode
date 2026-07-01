@@ -66,6 +66,7 @@ data/l5-sync/
 
 # 演进计划锁状态（evolution-lock.js 写入，P0-0 元能力，会话级）
 .claude/skills/left-brain/memory/evolution-plan.json
+.claude/skills/left-brain/memory/evolution-lock-violations.jsonl
 
 # 失败蒸馏器动态数据（M13 v2.0.5）
 .claude/skills/left-brain/memory/distillation-log.jsonl

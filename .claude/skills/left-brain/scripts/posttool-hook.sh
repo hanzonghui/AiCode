@@ -32,6 +32,10 @@ if [ -n "$WORKSPACE_ROOT" ] && [ -f "$WORKSPACE_ROOT/scripts/orchestrator/workfl
   TMPFILE=$(mktemp)
   echo "$INPUT" > "$TMPFILE"
   node "$WORKSPACE_ROOT/scripts/orchestrator/workflow/workflow-observer.js" record-posttool "$TMPFILE" 2>/dev/null
+  # 引擎 D：evolution-lock L3 allowed_docs 强制校验
+  if [ -f "$WORKSPACE_ROOT/scripts/orchestrator/evolution-lock.js" ]; then
+    node "$WORKSPACE_ROOT/scripts/orchestrator/evolution-lock.js" guard-posttool "$TMPFILE" 2>/dev/null
+  fi
   rm -f "$TMPFILE"
 fi
 

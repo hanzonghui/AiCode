@@ -314,6 +314,81 @@ test('init / status / acquire / queue / release CLI 跑通', () => {
   }
 });
 
+console.log('\n🗂️  测试维度 13：isAllowedDoc 匹配规则');
+test('精确路径、目录前缀、不匹配、空限制都正确', () => {
+  const lock = require(SCRIPT);
+  assertEq(lock.isAllowedDoc('scripts/foo.js', ['scripts/foo.js']), true, '精确路径通过');
+  assertEq(lock.isAllowedDoc('scripts/foo.js', ['other/**']), false, '不同目录拒绝');
+  assertEq(lock.isAllowedDoc('scripts/bar/baz.js', ['scripts/bar/**']), true, '/** 匹配子文件');
+  assertEq(lock.isAllowedDoc('scripts/bar', ['scripts/bar/**']), true, '/** 也匹配目录本身');
+  assertEq(lock.isAllowedDoc('scripts/barx/baz.js', ['scripts/bar/**']), false, '前缀相似但不同目录拒绝');
+  assertEq(lock.isAllowedDoc('any.js', []), true, '空 allowed_docs 放行');
+  assertEq(lock.isAllowedDoc(null, ['x.js']), true, '无法识别路径时放行');
+  assertEq(lock.isAllowedDoc('a\\b\\c.js', ['a/b/c.js']), true, '反斜杠归一化后匹配');
+});
+
+console.log('\n🗂️  测试维度 14：guardPostToolUse 校验');
+test('有锁时允许/拒绝 allowed_docs 正确', () => {
+  const lock = require(SCRIPT);
+  const realStateFile = lock.STATE_FILE;
+  const realStateContent = fs.existsSync(realStateFile) ? fs.readFileSync(realStateFile, 'utf8') : null;
+  try {
+    if (fs.existsSync(realStateFile)) fs.unlinkSync(realStateFile);
+    lock.acquire('M-guard', 'guard-owner', {
+      title: 'guard 测试',
+      allowed_docs: ['allowed.js', 'dir/**'],
+    });
+    assertEq(
+      lock.guardPostToolUse({ tool_use_name: 'Edit', tool_input: { file_path: 'allowed.js' } }),
+      null,
+      '允许文件返回 null'
+    );
+    assertEq(
+      lock.guardPostToolUse({ tool_use_name: 'Write', tool_input: { file_path: 'dir/sub/x.js' } }),
+      null,
+      '目录前缀内文件返回 null'
+    );
+    const v = lock.guardPostToolUse({ tool_use_name: 'Edit', tool_input: { file_path: 'forbidden.js' } });
+    assert(v !== null, '不允许文件触发违规');
+    assertEq(v.lock_id, 'M-guard', '违规记录当前锁 id');
+    assertEq(v.file_path, 'forbidden.js', '违规记录文件路径');
+    assertEq(
+      lock.guardPostToolUse({ tool_use_name: 'Bash', tool_input: { command: 'rm -rf /' } }),
+      null,
+      '非 Edit/Write 工具不校验'
+    );
+    // 清锁后放行
+    lock.release();
+    assertEq(
+      lock.guardPostToolUse({ tool_use_name: 'Edit', tool_input: { file_path: 'forbidden.js' } }),
+      null,
+      '无锁时放行'
+    );
+  } finally {
+    if (realStateContent) fs.writeFileSync(realStateFile, realStateContent);
+  }
+});
+
+console.log('\n🗂️  测试维度 15：CLI acquire --allowed-docs');
+test('acquire 命令支持 --allowed-docs 并写入 current', () => {
+  const lock = require(SCRIPT);
+  const realStateFile = lock.STATE_FILE;
+  const realStateContent = fs.existsSync(realStateFile) ? fs.readFileSync(realStateFile, 'utf8') : null;
+  try {
+    if (fs.existsSync(realStateFile)) fs.unlinkSync(realStateFile);
+    const out = execSync(`node "${SCRIPT}" acquire M-cli-docs cli-owner "测试" --allowed-docs a.js,b/**`, { encoding: 'utf8' });
+    assert(out.includes('allowed_docs=[a.js, b/**]'), 'CLI 输出显示 allowed_docs');
+    const s = lock.loadState();
+    assert(s.current !== null, 'current 已写入');
+    assertEq(s.current.id, 'M-cli-docs', 'id 正确');
+    assertEq(s.current.allowed_docs.length, 2, 'allowed_docs 2 条');
+    assertEq(s.current.allowed_docs[0], 'a.js', '第一条正确');
+    assertEq(s.current.allowed_docs[1], 'b/**', '第二条正确');
+  } finally {
+    if (realStateContent) fs.writeFileSync(realStateFile, realStateContent);
+  }
+});
+
 // ── 收尾 ─────────────────────────────────────────
 
 console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
