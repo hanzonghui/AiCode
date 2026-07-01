@@ -29,6 +29,21 @@
 - `node scripts/orchestrator/workflow/test-suggestion-engine.js` 4/4 通过
 - 手动模拟 PostToolUse hook 调用，成功写入 `file_modified` 事件
 
+### Fixed - AUDIT-M54-batch2-C：TODO/stale 取消 head 截断（2026-07-01）
+
+> **背景**：`proactive-scan.js` 的 `todo-accumulate` / `stale-files` 两个维度使用 `git ls-files | head -1000/500` 截断输出，导致仓库文件超过阈值时 TODO 累积数和遗忘文件数被静默低估，异常漏报。
+
+- **`scripts/orchestrator/proactive/proactive-scan.js`** — 移除两处 `| head -N` 管道，改为全量扫描
+  - `detectTodoAccumulate`：`git ls-files "*.js" "*.ts" "*.md"` 不再截断
+  - `detectStaleFiles`：`git ls-files "*.js" "*.md"` 不再截断
+  - `execSafe` 增加 `maxBuffer: 10MB`，避免全量输出触发 Node `ENOBUFS`
+- **`scripts/orchestrator/proactive/test-proactive-scan.js`** — 新增回归断言：读取源码确认不再含 `| head -` 截断模式
+
+**验证**：
+- `node scripts/orchestrator/proactive/test-proactive-scan.js` 36/36 通过
+
+**关联**：AUDIT-M54-batch2-C-todo-stale-truncate
+
 ### Fixed - AUDIT-M54-batch2-B：auto-implement 决策流程补 metrics 埋点（2026-07-01）
 
 > **背景**：深度审计发现 auto-implement 的 metrics 埋点只在 CLI `run` 命令，核心决策函数 `evaluateSafety` / `listExecutable` / `implementOne` 里没有任何指标，导致 L4/L5 评价闭环无法观测 candidate 通过率、拒绝原因分布、实现成功/失败率。

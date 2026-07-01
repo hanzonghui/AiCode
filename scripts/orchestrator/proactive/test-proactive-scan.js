@@ -77,6 +77,10 @@ section('维度 2: uncommitted');
 section('维度 3: todo-accumulate');
 
 {
+  // 回归：取消 head 截断（AUDIT-M54-batch2-C）
+  const source = fs.readFileSync(path.join(__dirname, 'proactive-scan.js'), 'utf8');
+  assert(!source.includes('| head -'), 'TODO/stale 扫描不再使用 head 截断');
+
   const r = detectTodoAccumulate();
   assert(Array.isArray(r), '返回数组');
   // 当前项目可能有不少 TODO，不强断言

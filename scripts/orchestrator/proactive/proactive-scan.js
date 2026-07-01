@@ -101,6 +101,7 @@ function execSafe(cmd, cwd) {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
       timeout: 5000,
+      maxBuffer: 10 * 1024 * 1024, // 10MB，支持全量扫描而不 head 截断
     }).trim();
   } catch {
     return null;
@@ -175,7 +176,7 @@ function detectUncommitted() {
 
 function detectTodoAccumulate() {
   try {
-    const output = execSafe('git ls-files "*.js" "*.ts" "*.md" 2>/dev/null | head -1000');
+    const output = execSafe('git ls-files "*.js" "*.ts" "*.md" 2>/dev/null');
     if (!output) return [];
 
     const files = output.split('\n').filter(Boolean);
@@ -280,7 +281,7 @@ function detectDepsOutdated() {
 
 function detectStaleFiles() {
   try {
-    const output = execSafe('git ls-files "*.js" "*.md" 2>/dev/null | head -500');
+    const output = execSafe('git ls-files "*.js" "*.md" 2>/dev/null');
     if (!output) return [];
 
     const files = output.split('\n').filter(Boolean);
