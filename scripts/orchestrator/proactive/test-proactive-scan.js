@@ -77,7 +77,7 @@ section('维度 2: uncommitted');
 section('维度 3: todo-accumulate');
 
 {
-  // 回归：取消 head 截断（AUDIT-M54-batch2-C）
+  // 回归：取消 head 截断（M58）
   const source = fs.readFileSync(path.join(__dirname, 'proactive-scan.js'), 'utf8');
   assert(!source.includes('| head -'), 'TODO/stale 扫描不再使用 head 截断');
 
