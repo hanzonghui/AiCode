@@ -30,6 +30,10 @@ const { execSync, spawnSync } = require('child_process');
 const { createBranch, mergeBranch, deleteBranch, hasUncommittedChanges, runTests, getCurrentBranch, gitExec } = require('./implementer');
 const { judgeCandidateWithFallback } = require('../orchestrator/llm-adapter');
 
+// 复用 orchestrator metrics（独立跑时可选加载，不阻塞主流程）
+let Metrics = null;
+try { Metrics = require('../orchestrator/metrics'); } catch { /* metrics.js 不存在时静默退化 */ }
+
 // ── 路径配置 ─────────────────────────────────────────
 
 const WORKSPACE_ROOT = path.join(__dirname, '..', '..');
@@ -108,6 +112,49 @@ function writeAnomaly(type, detail) {
   writeJSON(ANOMALY_FILE, anomalies);
 }
 
+// ── Metrics 埋点（M54-B：观察链路不断）──────────────────
+
+function recordEvaluation(candidate, safety) {
+  if (!Metrics) return;
+  const reason = safety.reason || '';
+  let reasonCategory = 'other';
+  if (/composite/.test(reason)) reasonCategory = 'composite';
+  else if (/effort/.test(reason)) reasonCategory = 'effort';
+  else if (/suggestion/.test(reason)) reasonCategory = 'suggestion';
+  else if (/forbidden dep|禁止依赖/.test(reason)) reasonCategory = 'forbidden_dep';
+  else if (/LLM-judge reject/.test(reason)) reasonCategory = 'llm_reject';
+
+  Metrics.increment('auto_implement.evaluation', 1, {
+    result: safety.allowed ? 'allowed' : 'rejected',
+    source: safety.source || 'hard',
+    reason_category: reasonCategory,
+    candidate_source: candidate.source || 'unknown',
+    candidate: candidate.name || candidate.feature || 'unknown',
+  });
+}
+
+function recordImplement(candidate, result, startTime) {
+  if (!Metrics) return;
+  const elapsed = startTime ? Date.now() - startTime : 0;
+  const tags = {
+    result,
+    candidate_source: candidate.source || 'unknown',
+    candidate: candidate.name || candidate.feature || 'unknown',
+  };
+  Metrics.timing('auto_implement.implement.duration', elapsed, tags);
+  Metrics.increment('auto_implement.implement', 1, tags);
+}
+
+function recordExecutableCount(count) {
+  if (!Metrics) return;
+  Metrics.gauge('auto_implement.candidates.executable', count, { source: 'listExecutable' });
+}
+
+function recordRunPlan(count, auto) {
+  if (!Metrics) return;
+  Metrics.gauge('auto_implement.run.plan', count, { auto: String(auto) });
+}
+
 // ── 候选加载（双源） ──────────────────────────────────
 
 function loadCandidates() {
@@ -175,13 +222,13 @@ async function evaluateSafety(candidate) {
 
   // LLM 拒绝（一票否决）→ 不再走硬阈值，但 reason 保持原有语义前缀（向后兼容）
   if (judge.verdict === 'reject') {
-    // HeuristicAdapter.reject reasons 已含语义化短语（如"包含禁止依赖"、"composite X < Y"）
-    // 这里包一层 "LLM-judge reject: " 前缀，便于日志区分
-    return {
+    const result = {
       allowed: false,
       reason: `LLM-judge reject: ${judge.reasons.join('; ')}`,
       source: 'llm',
     };
+    recordEvaluation(candidate, result);
+    return result;
   }
 
   // LLM 跳过（需人工确认）→ 走硬阈值（保守：宁可放过不可漏过）
@@ -191,7 +238,9 @@ async function evaluateSafety(candidate) {
 
   // LLM 接受 / 跳过 / 任何情况都过 → 走硬阈值最终把关
   const hard = evaluateSafetyHard(candidate);
-  return { ...hard, source: 'hard' };
+  const result = { ...hard, source: 'hard' };
+  recordEvaluation(candidate, result);
+  return result;
 }
 
 /**
@@ -223,6 +272,7 @@ async function listExecutable() {
   }
   // 排序: composite_score 降序
   executable.sort((a, b) => (b.composite_score || b.score || 0) - (a.composite_score || a.score || 0));
+  recordExecutableCount(executable.length);
   return executable;
 }
 
@@ -277,6 +327,7 @@ async function implementOne(candidate, opts = {}) {
   if (!safety.allowed) {
     console.log(`  ⛔ 安全闸门拒绝: ${safety.reason} (source: ${safety.source})`);
     logEntry({ action: 'skip', candidate: candidate.name || candidate.feature, reason: safety.reason });
+    recordImplement(candidate, 'safety_rejected', startTime);
     return { success: false, reason: 'safety_rejected', detail: safety.reason };
   }
 
@@ -288,6 +339,7 @@ async function implementOne(candidate, opts = {}) {
     console.log(`    2. 调 claude -p 实现`);
     console.log(`    3. 跑 npm test`);
     console.log(`    4. 合并到当前分支`);
+    recordImplement(candidate, 'dry_run', startTime);
     return { success: true, dryRun: true };
   }
 
@@ -304,6 +356,7 @@ async function implementOne(candidate, opts = {}) {
     console.log(`  🌿 分支: ${branchName}`);
   } catch (e) {
     console.error(`  ❌ 创建分支失败: ${e.message}`);
+    recordImplement(candidate, 'branch_failed', startTime);
     return { success: false, reason: 'branch_failed', detail: e.message };
   }
 
@@ -352,6 +405,7 @@ async function implementOne(candidate, opts = {}) {
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     logEntry({ action: 'success', candidate: candidate.name || candidate.feature, branch: branchName, elapsed });
+    recordImplement(candidate, 'success', startTime);
     console.log(`  ✅ 全部完成（${elapsed}s）`);
     return { success: true, branch: branchName, elapsed };
 
@@ -376,6 +430,7 @@ async function implementOne(candidate, opts = {}) {
     saveState(state);
 
     logEntry({ action: 'fail', candidate: candidate.name || candidate.feature, error: err.message });
+    recordImplement(candidate, 'fail', startTime);
 
     if (state.consecutive_fails >= SAFETY.MAX_CONSECUTIVE_FAILS) {
       writeAnomaly('auto-implement:too-many-fails', `连续失败 ${state.consecutive_fails} 次，自动停止`);
@@ -497,6 +552,7 @@ async function main() {
     }
 
     const toRun = auto ? list.slice(0, max) : list.slice(0, 1);
+    recordRunPlan(toRun.length, auto);
     console.log(`🚀 计划运行 ${toRun.length} 个 (auto=${auto}, dryRun=${dryRun}, max=${max})`);
 
     let successCount = 0, failCount = 0;

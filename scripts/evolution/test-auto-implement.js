@@ -11,6 +11,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const AI = require('./auto-implement');
+const Metrics = require('../orchestrator/metrics');
 const {
   evaluateSafety,
   checkPathSafety,
@@ -32,6 +33,16 @@ function assert(cond, name, detail) {
   else { fail++; fails.push({ name, detail }); console.log(`  ❌ ${name}${detail ? '  → ' + detail : ''}`); }
 }
 function section(t) { console.log(`\n── ${t} ──`); }
+
+// Metrics 事件查询助手（只读最近 N 行，避免全量加载）
+function recentMetricEvents(name, candidateFilter, maxLines = 300) {
+  if (!fs.existsSync(Metrics.METRICS_FILE)) return [];
+  const lines = fs.readFileSync(Metrics.METRICS_FILE, 'utf8').trim().split('\n').slice(-maxLines);
+  return lines
+    .map(l => { try { return JSON.parse(l); } catch { return null; } })
+    .filter(Boolean)
+    .filter(ev => ev.name === name && (!candidateFilter || (ev.tags && ev.tags.candidate === candidateFilter)));
+}
 
 // ==================== 1. evaluateSafety 闸门 ====================
 section('1. 安全闸门 evaluateSafety');
@@ -157,8 +168,9 @@ async function runListExecutableTest() {
     }));
     // listExecutable 是 async（M12 LLM-judge 接入后），需要 await
     const list = await listExecutable();
-    assert(list.length === 1 && list[0].name === 'safe/task', `只通过 1 个（实际 ${list.length}）`);
-    assert(list[0].composite_score >= 7.0, '通过项 composite >= 7.0');
+    const fromTasks = list.filter(i => i.source === 'auto-task');
+    assert(fromTasks.length === 1 && fromTasks[0].name === 'safe/task', `auto-task 来源只通过 1 个（实际 ${fromTasks.length}）`);
+    assert(fromTasks[0].composite_score >= 7.0, '通过项 composite >= 7.0');
   } finally {
     if (fs.existsSync(tmpTasks)) {
       fs.copyFileSync(tmpTasks, TASKS_FILE);
@@ -233,6 +245,46 @@ async function test7() {
   assert(r.success && r.dryRun, 'dry-run 成功且不实际执行');
 }
 
+// ==================== 8. metrics 埋点 ====================
+async function test8() {
+  section('8. metrics 埋点');
+
+  // evaluateSafety 允许
+  await evaluateSafety({
+    name: 'metric-test-eval', composite_score: 8.0, estimated_effort: 'small',
+    suggestion: 'adopt', description: 'test',
+  });
+  // evaluateSafety 拒绝
+  await evaluateSafety({
+    name: 'metric-test-reject', composite_score: 5.0, estimated_effort: 'small',
+    suggestion: 'adopt', description: 'test',
+  });
+
+  const allowedEvents = recentMetricEvents('auto_implement.evaluation', 'metric-test-eval');
+  assert(allowedEvents.length >= 1, 'evaluateSafety allowed 写入 metric');
+  assert(allowedEvents[0].tags.result === 'allowed', 'allowed metric result 标签正确');
+  assert(allowedEvents[0].tags.source === 'hard' || allowedEvents[0].tags.source === 'llm', `allowed metric source 有效（${allowedEvents[0].tags.source}）`);
+
+  const rejectEvents = recentMetricEvents('auto_implement.evaluation', 'metric-test-reject');
+  assert(rejectEvents.length >= 1 && rejectEvents[0].tags.result === 'rejected', 'evaluateSafety rejected 写入 metric');
+  assert(rejectEvents[0].tags.reason_category === 'composite', `rejected metric reason_category 正确（${rejectEvents[0].tags.reason_category}）`);
+
+  // implementOne dry-run
+  await AI.implementOne({
+    name: 'metric-test-impl', composite_score: 8.0, estimated_effort: 'small',
+    suggestion: 'adopt', description: 'test', source: 'test',
+  }, { dryRun: true });
+  const implEvents = recentMetricEvents('auto_implement.implement', 'metric-test-impl');
+  assert(implEvents.length >= 1 && implEvents[0].tags.result === 'dry_run', 'implementOne dry-run 写入 implement metric');
+
+  const durEvents = recentMetricEvents('auto_implement.implement.duration', 'metric-test-impl');
+  assert(durEvents.length >= 1 && durEvents[0].tags.result === 'dry_run' && durEvents[0].durationMs >= 0, 'implementOne dry-run 写入 duration metric');
+
+  // listExecutable gauge（test 4 已触发）
+  const gaugeEvents = recentMetricEvents('auto_implement.candidates.executable');
+  assert(gaugeEvents.length >= 1, 'listExecutable 写入 executable gauge');
+}
+
 // ==================== 汇总 ====================
 console.log(`\n${'━'.repeat(40)}`);
 console.log(`📊 测试结果: ${pass} 通过 / ${fail} 失败`);
@@ -244,8 +296,9 @@ if (fail > 0) {
 console.log('✅ 全部通过');
 
 // 异步测试在文件末尾需要包 async IIFE（Node ESM 检测）
-test7().then(() => runListExecutableTest()).then(() => {
-  console.log(`\n📊 最终: ${pass} 通过 / ${fail} 失败`);
+test7().then(() => runListExecutableTest()).then(() => test8()).then(() => {
+  console.log(`\n${'━'.repeat(40)}`);
+  console.log(`📊 最终: ${pass} 通过 / ${fail} 失败`);
   if (fail > 0) {
     fails.forEach(f => console.log(`  ❌ ${f.name}: ${f.detail || ''}`));
     process.exit(1);

@@ -29,6 +29,22 @@
 - `node scripts/orchestrator/workflow/test-suggestion-engine.js` 4/4 通过
 - 手动模拟 PostToolUse hook 调用，成功写入 `file_modified` 事件
 
+### Fixed - AUDIT-M54-batch2-B：auto-implement 决策流程补 metrics 埋点（2026-07-01）
+
+> **背景**：深度审计发现 auto-implement 的 metrics 埋点只在 CLI `run` 命令，核心决策函数 `evaluateSafety` / `listExecutable` / `implementOne` 里没有任何指标，导致 L4/L5 评价闭环无法观测 candidate 通过率、拒绝原因分布、实现成功/失败率。
+
+- **`scripts/evolution/auto-implement.js`** — 接入 `scripts/orchestrator/metrics.js`（可选加载，失败不阻塞主流程）
+  - `evaluateSafety`：每次评估写入 `auto_implement.evaluation` counter，标签含 `result`（allowed/rejected）、`source`（llm/hard）、`reason_category`（composite/effort/suggestion/forbidden_dep/llm_reject/other）、candidate 来源
+  - `listExecutable`：写入 `auto_implement.candidates.executable` gauge
+  - `implementOne`：写入 `auto_implement.implement` counter + `auto_implement.implement.duration` timing，标签含 `result`（success/fail/dry_run/safety_rejected/branch_failed）
+  - `run` CLI：写入 `auto_implement.run.plan` gauge
+- **`scripts/evolution/test-auto-implement.js`** — 新增第 8 节 metrics 断言：验证 evaluation / implement / duration / executable gauge 四类事件落盘；顺手修复 preexisting `listExecutable` 断言（原断言未考虑 candidates.json 中已有可执行候选）
+
+**验证**：
+- `node scripts/evolution/test-auto-implement.js` 37/37 通过
+
+**关联**：AUDIT-M54-batch2-B-auto-implement-metrics · M15 评价闭环
+
 ### Fixed - M54 版本号 metadata 漂移：建立 package.json 为唯一真实源（2026-07-01）
 
 > **背景**：`01.md` 顶部/版本状态段/底部、`04.md` 顶部/当前版本段、`02.md` 顶部、`README.md` 测试基线、`PROJECT-CONTEXT.md` 顶部的版本号 metadata 多处手工维护，出现 `v2.6.0` / `v3.0.1` / `v3.0.5` / `v3.0.8` 不一致。
