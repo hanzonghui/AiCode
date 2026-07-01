@@ -359,8 +359,14 @@ function recallBeforeDispatch(taskText) {
 /**
  * 内部：记录 evo.kb.recall 评价事件（接 M15）
  * 软引用 metrics.js（独立测试时不强制依赖）
+ *
+ * 设计：no-graph / error 不计入 recall 分母
+ *   - KB 引擎不可用（no-graph）→ 不该被解读为「recall 失败」
+ *   - 检索抛错（error）→ 同上，避免污染评价指标
+ *   - 只有 miss（真没命中）才算 miss
  */
 function _recordRecallMetric(hit, subTag) {
+  if (!hit && (subTag === 'no-graph' || subTag === 'error')) return;
   try {
     const Metrics = require('./metrics');
     if (Metrics && Metrics.Evolution) {

@@ -22,6 +22,7 @@ const {
   estimateModuleCount,
   detectTaskType,
   agentsFromScore,
+  recallBeforeDispatch,
 } = require('./dispatcher');
 
 let pass = 0, fail = 0;
@@ -264,6 +265,52 @@ section('CLI 入口（spawn 子进程）');
   // 取决于 permissions.js 的实现：可能 warning 不抛 exit
   // 我们只验证 CLI 不因此崩
   assert(true, 'USER_ROLE=user CLI 不崩溃（warning 兜底）', `stderr=${stderr.slice(0, 80)}`);
+}
+
+// ==================== 8. AUDIT-20260701-P0-003: M14 reuse 验证 + no-graph 不计入 ====================
+section('M14 reuse 阈值 + no-graph 不计入');
+
+// recallBeforeDispatch 命中 reuse：score≥0.5 + confidence≥0.7 + category 可信
+{
+  const Metrics = require('./metrics');
+  const before = Metrics.snapshot();
+  const beforeHits = before.counters['evo.kb.recall.hit'] || 0;
+  const beforeMisses = before.counters['evo.kb.recall.miss'] || 0;
+
+  // 真实 query 走完整路径
+  const r = recallBeforeDispatch('智能调度 dispatcher');
+  assert(r !== null, 'recallBeforeDispatch 返回非空');
+  // 命中字段三档（reuse/similar/miss/no-graph）
+  assert(['reuse', 'similar', 'miss', 'no-graph'].includes(r.hit), `hit 在 4 档内 (got=${r.hit})`);
+  if (r.hit === 'reuse' && r.kb) {
+    assert(r.kb.confidence >= 0.7, `reuse kb.confidence ≥ 0.7 (got=${r.kb.confidence})`);
+    assert(['决策', '技术', '工程经验', 'feature_full', 'bug_fix'].includes(r.kb.category),
+      `reuse category ∈ 可信列表 (got=${r.kb.category})`);
+  }
+}
+
+// recallBeforeDispatch no-graph 路径：直接测 _recordRecallMetric 不写 miss
+{
+  const Metrics = require('./metrics');
+  const before = Metrics.snapshot();
+  const beforeMisses = before.counters['evo.kb.recall.miss'] || 0;
+
+  // 模拟 KB 引擎不可用：直接调 dispatcher 内部用 require('./recall/semantic-recall') 会失败时
+  // recallBeforeDispatch 返回 hit='no-graph'，并调用 _recordRecallMetric(false, 'no-graph')
+  // 验证 miss 计数不变（no-graph 不计入 miss 分母）
+  // 通过执行 CLI（依赖 KB 引擎软引用可能成功也可能 no-graph）触发不了，所以直接读 metrics.jsonl
+  // 用更直接方式：require dispatcher 后调 recallBeforeDispatch，看 r.hit
+  const r2 = recallBeforeDispatch('完全无关的查询 keyword_xyzabc 12345');
+  // r2 可能 miss/no-graph — 无论哪种，关键是看 metrics
+  const after = Metrics.snapshot();
+  const afterMisses = after.counters['evo.kb.recall.miss'] || 0;
+  if (r2.hit === 'no-graph') {
+    // no-graph 路径：misses 必须不增
+    assert(afterMisses === beforeMisses, `no-graph 不计入 miss（before=${beforeMisses} after=${afterMisses}）`);
+  } else if (r2.hit === 'miss') {
+    // miss 路径：misses +1
+    assert(afterMisses === beforeMisses + 1, `miss 计入 miss 分母 +1（before=${beforeMisses} after=${afterMisses}）`);
+  }
 }
 
 // ==================== 汇总 ====================

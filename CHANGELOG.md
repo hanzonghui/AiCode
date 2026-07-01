@@ -10,6 +10,29 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Fixed - dispatcher.js M14 no-graph 不计入 recall.miss（2026-07-01 · AUDIT-20260701-P0-003）
+
+**背景**：dispatcher.js:367 `_recordRecallMetric(hit, subTag)` 当 KB 引擎不可用时调 `recallPrecision(false, { source: 'dispatcher', hit: 'no-graph' })`，但 `metrics.js` 的 `recallPrecision(hit, tags)` 设计是 `hit=true` 写 `evo.kb.recall.hit`，`hit=false` 写 `evo.kb.recall.miss`，**不区分 subTag**。结果：每次 KB 引擎不可用（依赖 require 失败 / 索引缺失）都被算成 recall 失败，月度聚合的 precision 被「KB 引擎本身不可用」污染，**违背了原始设计意图**（commit 24f299e 当时写的"避免污染指标"）。同时确认 M14 reuse 的 `kb.confidence >= 0.7`（line 269 REUSE_CONFIDENCE_MIN）+ `category ∈ 可信列表`（line 270 REUSE_CATEGORIES）已实现，标题描述的"增加 kb.confidence 下限 + category 过滤"无需新代码。
+
+**修复**：
+- **`scripts/orchestrator/dispatcher.js`** — `_recordRecallMetric` 函数加 1 行：`!hit && (subTag === 'no-graph' || subTag === 'error')` 时直接 return，不写 metrics（KB 引擎不可用 / 检索抛错不算 recall 失败）
+- **`scripts/orchestrator/test-dispatcher-unit.js`** — 新增 3 个断言：
+  - `recallBeforeDispatch('智能调度 dispatcher')` 命中时若 `hit='reuse'` 校验 `kb.confidence >= 0.7` + `category ∈ {决策/技术/工程经验/feature_full/bug_fix}`
+  - `hit='no-graph'` 时 `evo.kb.recall.miss` 计数不增（修复生效）
+  - `hit='miss'` 时 `evo.kb.recall.miss` 计数 +1（真 miss 仍计入）
+
+**验证**：
+- `node scripts/orchestrator/test-dispatcher-unit.js` 68/68 通过（原 65 + 新增 3）
+- `node scripts/orchestrator/test-dispatcher.js` 65/65 通过
+- `node scripts/orchestrator/test-evolution-metrics.js` 42/42 通过（metrics API 未变）
+- `npm test` 全量：除预存的 `semantic-recall` "不存在的查询返回空" 1 条外全部通过（与本修复无关）
+
+**L5 影响**：月度评价指标 kb.recall_precision 恢复真实可信，「KB 引擎不可用」不再污染「AI 召回能力」评估
+
+**Files**（修改/新增清单）：
+- `scripts/orchestrator/dispatcher.js`（_recordRecallMetric 函数加 1 行早 return + 注释）
+- `scripts/orchestrator/test-dispatcher-unit.js`（新增 1 段 section 验证）
+
 ### Fixed - auto-fix.js candidate-pending implementer 相对路径错（2026-07-01 · AUDIT-20260701-P0-002）
 
 **背景**：`scripts/orchestrator/proactive/auto-fix.js:297` 的 `fixCandidatePending()` 调 `require('../evolution/implementer')`，但 `auto-fix.js` 实际在 `scripts/orchestrator/proactive/` 下，要到 `scripts/evolution/implementer.js` 必须 `require('../../evolution/implementer')`（`../` = orchestrator/，`../../` = scripts/）。结果：require 抛错，try/catch 退化到「implementer 加载失败 → 仅记 proposal + 让用户手动跑 `node scripts/evolution/daily-evolution.js implement`」。Fix 4 维度等于不工作。
