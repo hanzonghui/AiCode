@@ -329,6 +329,10 @@ function sync(options = {}) {
   const auditCount = next.filter(e => e.id.startsWith('AUDIT-')).length;
   const researchCount = next.filter(e => e.id.startsWith('RESEARCH-')).length;
   const manualCount = next.length - evoCount - auditCount - researchCount;
+  const p0Count = next.filter(e => e.priority === 'P0').length;
+  const p1Count = next.filter(e => e.priority === 'P1').length;
+  const p2Count = next.filter(e => e.priority === 'P2').length;
+  const p3Count = next.filter(e => e.priority === 'P3').length;
 
   let updatedMd = findAndReplaceTopMeta(md, [
     {
@@ -336,10 +340,16 @@ function sync(options = {}) {
       replacement: `$1${now().slice(0, 10)}$2${loadPackageVersion() || '3.0.5'}$3`,
     },
     {
-      pattern: /(\*\*当前 `next` 队列状态\*\*：)[^|]+$/m,
+      pattern: /(\*\*当前 `next` 队列状态\*\*：|\*\*next 队列：)[^\n]+$/m,
       replacement: `$1🟡 **${newCount} 条候选**（${evoCount} EVOLVE + ${auditCount} AUDIT + ${researchCount} RESEARCH${manualCount > 0 ? ` + ${manualCount} 手动` : ''} · sync-roadmap 自动同步于 ${now().slice(0, 10)}）`,
     },
   ]);
+
+  // 同步 §十二 末尾"当前队列状态"段（如果存在）
+  updatedMd = updatedMd.replace(
+    /(- \*\*next 队列：)\d+ 条（\d+ P0 \+ \d+ P1 \+ \d+ P3）\*\*/m,
+    `$1${newCount} 条（${p0Count} P0 + ${p1Count} P1 + ${p3Count} P3）**`
+  );
 
   // 同步版本号 metadata（默认开启，--no-version 跳过）
   if (!options.noVersion) {
