@@ -3,8 +3,9 @@ name: evolve
 displayName: 🧬 自我进化 — 从 GitHub 学新能力
 version: 1.0
 description: >
-  从 GitHub Trending + Search 扫描 Claude 相关爆款项目，TF-IDF + LLM-judge 评估
-  可行性，自动入队高价值候选到 evolution-plan.json，让 AiCode 持续长新技能。
+  从 GitHub Trending + Search 扫描 Claude 相关爆款项目，启发式 5 维度（feature-analyzer.js）
+  + LLM-judge 闸门（llm-adapter.js）评估可行性，自动入队高价值候选到 evolution-plan.json，
+  让 AiCode 持续长新技能。
 tags:
   - evolution
   - github-scanner
@@ -29,7 +30,9 @@ gepa:
 
 # 🧬 自我进化 Skill
 
-> **v1.0 · GitHub 扫描 · 候选评估 · 自动实现 · LLM-judge 双轨制**
+> **v1.0.1 · GitHub 扫描 · 启发式 5 维度（feature-analyzer.js）· LLM-judge 闸门（llm-adapter.js · 独立模块）· 自动实现**
+>
+> **v3.0.8 P0-006 修正**：明确 feature-analyzer 是**纯启发式**（无 LLM 调用），LLM-judge 是独立闸门模块，二者**串行**（启发式先筛 → LLM-judge 后判）。原「双轨制」描述移除以免与 auto-implement.js 的双轨制混淆。
 
 ---
 
@@ -59,11 +62,11 @@ gepa:
 | **每周** | cron | 周度趋势对比 + 新增爆款项目 |
 | **月度** | cron | 30 天积累复盘 + 报告 |
 
-### 2. 候选评估（双轨制 M12）
+### 2. 候选评估（启发式 M6）
 
 | 维度 | 自动判断 | 评分 |
 |:-----|:---------|:----:|
-| **实用性** | TF-IDF 关键词相关度 | 1-10 |
+| **实用性** | 关键词匹配 + 字典加权 | 1-10 |
 | **可行性** | 人手/技术栈匹配 | 1-10 |
 | **独立性** | 是否需要外部依赖 | 1-10 |
 | **风险度** | 改动范围 + 安全影响 | 1-10（反向）|
@@ -71,11 +74,14 @@ gepa:
 
 **采纳标准**：综合分 ≥ 7.0 标 `suggestion=adopt`，自动入 `evolution-plan.json next`。
 
+**实现**：`scripts/evolution/feature-analyzer.js`（纯启发式，**无 LLM 调用**）。LLM-judge 由独立模块 `judgeCandidateWithFallback()`（`scripts/orchestrator/llm-adapter.js`）在 auto-implement 阶段串行触发（见 §3）。
+
 ### 3. LLM-judge 闸门（M12）
 
 - `judgeCandidateWithFallback()`：4 adapter 镜像
 - **双轨制**：LLM reject 一票否决 + LLM accept 走硬阈值兜底
 - 避免 AI 误判，测试 52/52 通过
+- **位置**：与 feature-analyzer 串行，**不混在启发式评估内**（v3.0.8 P0-006 修正）
 
 ### 4. 自动实现（M7 · 5 道安全闸门）
 

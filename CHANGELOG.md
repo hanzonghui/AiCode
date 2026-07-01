@@ -10,6 +10,42 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Fixed - evolution：明确 feature-analyzer 启发式与 LLM-judge 独立模块（2026-07-01 · AUDIT-20260701-P0-006）
+
+**背景**：
+- `.claude/skills/evolve/SKILL.md` 描述候选评估为「**双轨制 M12**」+「**实用性** | TF-IDF 关键词相关度」，但实际：
+  - `scripts/evolution/feature-analyzer.js` 是**纯启发式 5 维度**（关键词匹配 + 字典加权），**无 TF-IDF、无 LLM 调用**
+  - `judgeCandidateWithFallback()` 在独立模块 `scripts/orchestrator/llm-adapter.js`（M12 LLM-judge 闸门），与 feature-analyzer **串行**，不混在评估内
+- 04.md §十二 M25-A 描述「🧬 三层感知 + LLM-judge 双轨制 + 5 道闸门」也把双轨制与启发式混在一起
+- 「双轨制」表述与 `auto-implement.js` 的双轨制（LLM reject 一票否决 + 硬阈值兜底，line 690）混淆
+
+**澄清**：
+| 模块 | 类型 | 位置 |
+|:-----|:-----|:-----|
+| feature-analyzer.js | **启发式**（5 维度，无 LLM）| `scripts/evolution/` |
+| judgeCandidateWithFallback() | **LLM-judge 闸门**（独立模块）| `scripts/orchestrator/llm-adapter.js` |
+| 串行关系 | 启发式先筛 → LLM-judge 后判 | auto-implement.js:690 |
+
+**修复**（仅文档，无代码改动）：
+- **`.claude/skills/evolve/SKILL.md`** —
+  - 标题「双轨制 M12」→「启发式 M6」
+  - 「实用性 | TF-IDF」→「实用性 | 关键词匹配 + 字典加权」
+  - 「LLM-judge 双轨制」标注**位置**：与 feature-analyzer 串行，**不混在启发式评估内**（v3.0.8 P0-006 修正）
+  - 顶部 banner v1.0 → v1.0.1 + 修正说明
+  - description：移除「TF-IDF」（不存在），改为「启发式 5 维度 + LLM-judge 闸门（独立模块）」
+- **`04_自我演进路线.md`** §十二 M25-A 描述补全：feature-analyzer 是启发式纯关键词匹配、LLM-judge 在独立 llm-adapter.js 模块，与启发式串行
+
+**为什么不改代码**：feature-analyzer.js 实际功能正确；LLM-judge 已在 llm-adapter.js 独立实现；本次纯文档不一致修正
+
+**验证**：
+- `node scripts/orchestrator/test-skills.js` 42/44 通过（预存 autogpt/deep-research 2 项失败与本次无关）
+- SKILL.md YAML frontmatter 解析通过
+- 文档内一致性：启发式 mentions 7、双轨制 mentions 5（仅保留正确语境）
+
+**L5 影响**：候选评估链条（feature-analyzer → llm-adapter → auto-implement）描述清晰化，新会话不会误解「双轨制」归属
+
+**关联**：AUDIT-20260701-P0-006
+
 ### Fixed - evolution：统一 GitHub 认证到公共工具（2026-07-01 · AUDIT-20260701-P0-005）
 
 **背景**：`github-scanner.js` 内部实现 `getGitHubToken()` + 自建 fetch 头（v3.0.2 M18），`trend-watcher.js` 用裸 `fetch()` 无 Authorization header，**限流 10 req/min**（认证模式 30 req/min）。三脚本（trend-watcher/upgrade-checker/enrichTrendingRepos）的认证口径分散。
