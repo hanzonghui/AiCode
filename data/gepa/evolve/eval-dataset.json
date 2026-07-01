@@ -1,0 +1,64 @@
+{
+  "evals": [
+    {
+      "id": "scan-trending",
+      "description": "扫描 GitHub Trending 发现 Claude 相关爆款项目",
+      "expected_actions": ["/evolve scan", "扫描 GitHub Trending", "发现候选"],
+      "keywords": ["scan", "trending", "github", "发现", "候选"]
+    },
+    {
+      "id": "analyze-candidate",
+      "description": "对候选项目进行 TF-IDF + LLM-judge 可行性评估",
+      "expected_actions": ["/evolve analyze", "评估候选", "打分"],
+      "keywords": ["analyze", "candidate", "评估", "打分", "llm-judge"]
+    },
+    {
+      "id": "run-full-flow",
+      "description": "执行 scan + analyze 完整进化流程",
+      "expected_actions": ["/evolve run", "完整流程", "扫描并分析"],
+      "keywords": ["run", "scan", "analyze", "完整流程"]
+    },
+    {
+      "id": "list-candidates",
+      "description": "查看当前候选列表与状态",
+      "expected_actions": ["/evolve candidates", "查看候选", "列表"],
+      "keywords": ["candidates", "候选", "列表", "查看"]
+    },
+    {
+      "id": "implement-candidate",
+      "description": "自动实现高价值候选（分支 + prompt + 测试 + 合并）",
+      "expected_actions": ["/evolve implement", "自动实现", "分支", "测试"],
+      "keywords": ["implement", "实现", "分支", "prompt", "测试", "合并"]
+    },
+    {
+      "id": "llm-judge-gate",
+      "description": "LLM-judge 双轨制闸门（reject 一票否决 + accept 兜底）",
+      "expected_actions": ["llm-judge", "双轨制", "reject", "accept"],
+      "keywords": ["llm-judge", "judgeCandidate", "reject", "accept", "双轨制"]
+    },
+    {
+      "id": "five-safety-gates",
+      "description": "自动实现 5 道安全闸门（失败保护 / 干跑 / 测试 / LLM / 二次采样）",
+      "expected_actions": ["5 道闸门", "失败保护", "干跑模式", "二次采样"],
+      "keywords": ["闸门", "失败保护", "干跑", "测试覆盖", "二次采样"]
+    },
+    {
+      "id": "watch-perception",
+      "description": "感知层自动检查已实现特性是否过时（每日/每周/月度）",
+      "expected_actions": ["/evolve watch", "感知层", "过时检测", "每日", "每周", "月度"],
+      "keywords": ["watch", "感知层", "过时", "每日", "每周", "月度", "cron"]
+    },
+    {
+      "id": "status-log",
+      "description": "查看进化历史与当前状态",
+      "expected_actions": ["/evolve status", "/evolve log", "进化历史", "状态"],
+      "keywords": ["status", "log", "历史", "状态", "进化"]
+    },
+    {
+      "id": "report-trend",
+      "description": "生成趋势报告并写入 evolution-plan.json",
+      "expected_actions": ["/evolve report", "趋势报告", "evolution-plan.json"],
+      "keywords": ["report", "趋势", "报告", "evolution-plan", "入队"]
+    }
+  ]
+}

@@ -10,6 +10,22 @@
 > **说明**：2026-06-25 清理历史 Unreleased 堆积 — 已交付内容已迁入对应版本号段（详见下方各 `[vX.Y.Z]`）。
 > 本段仅作占位，下个增量/发版再追加条目。
 
+### Fixed - AUDIT-M54-batch2-evolution-eval-dataset：补全 GEPA evolve eval-dataset.json（2026-07-01）
+
+> **背景**：`.claude/skills/evolve/SKILL.md` frontmatter 声明 `data/gepa/evolve/eval-dataset.json` 存在（`eval_dataset_source: synthetic`），但实际目录为空，导致 GEPA 评估 coverage 维度始终 fallback 到 0.5，且承诺与现实脱节。
+
+- **`data/gepa/evolve/eval-dataset.json`** — 新建 10 条 synthetic eval cases
+  - 覆盖 evolve skill 核心能力：`/evolve scan` / `analyze` / `run` / `candidates` / `implement` / `watch` / `status` / `log` / `report`
+  - 覆盖 M12 LLM-judge 双轨制、M7 5 道安全闸门、感知层 cron 等关键概念
+  - 每条 case 含 `id` / `description` / `expected_actions` / `keywords`，与 `skill-evaluator.js` 评估逻辑对齐
+
+**验证**：
+- `node scripts/evolution/gepa-runner.js --skill=evolve --dry-run` 正确加载 10 items
+- `node scripts/evolution/test-gepa.js` 26/26 通过
+- `npm run doc:check` 36/0/1 通过
+
+**关联**：AUDIT-M54-batch2-evolution-eval-dataset
+
 ### Fixed - AUDIT-M54-batch2-dispatcher-m14：M14 reuse 加 confidence 下限 + category 过滤（2026-07-01）
 
 > **背景**：`/audit full` 深度审计指出 M14 reuse 仅以 `score ≥ 0.5` 触发，缺少 `kb.confidence` 下限与 `kb.category` 相关性保护，低 confidence 或闲聊/偏好类 KB 偶然命中时会被误复用。
